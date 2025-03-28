@@ -1,94 +1,78 @@
-// js/fp-front.js
-jQuery(document).ready(function ($) {
-    // Verifica que PDF.js esté cargado y que se haya definido la variable fp_pdf_url
-    if (typeof pdfjsLib !== 'undefined' && fp_pdf_url) {
-        var loadingTask = pdfjsLib.getDocument(fp_pdf_url);
-        loadingTask.promise.then(function (pdf) {
-            var totalPages = pdf.numPages;
-            var viewer = $('#fp-pdf-viewer');
-            viewer.html(''); // Limpia el contenedor
-
-            // Crea un contenedor para las páginas
-            var pagesContainer = $('<div id="fp-pages-container"></div>');
-            viewer.append(pagesContainer);
-
-            // Para cada página, se crea un canvas donde se renderizará
-            for (var i = 1; i <= totalPages; i++) {
-                (function (pageNum) {
-                    pdf.getPage(pageNum).then(function (page) {
-                        var scale = 1.5;
-                        var viewport = page.getViewport({ scale: scale });
-                        var canvas = document.createElement('canvas');
-                        canvas.className = 'fp-page-canvas';
-                        canvas.width = viewport.width;
-                        canvas.height = viewport.height;
-                        var context = canvas.getContext('2d');
-                        var renderContext = {
-                            canvasContext: context,
-                            viewport: viewport
-                        };
-                        page.render(renderContext).promise.then(function () {
-                            // Cada canvas se envuelve en un contenedor (página) para Turn.js
-                            var pageDiv = $('<div class="fp-page"></div>');
-                            pageDiv.append(canvas);
-                            $('#fp-pages-container').append(pageDiv);
-
-                            // Una vez cargadas todas las páginas, se inicializa Turn.js
-                            if ($('#fp-pages-container .fp-page').length === totalPages) {
-                                $('#fp-pages-container').turn({
-                                    width: viewport.width * 2,
-                                    height: viewport.height,
-                                    autoCenter: true
-                                });
-                            }
-                        });
-                    });
-                })(i);
-            }
-        }, function (reason) {
-            console.error("Error al cargar el PDF: ", reason);
-        });
-    }
-
-    // Procesa las áreas interactivas definidas (se esperan coordenadas y propiedades en formato JSON)
-    var areasData = $('#fp-interactive-areas').data('areas');
-    if (areasData) {
-        try {
-            var areas = JSON.parse(areasData);
-            // Por cada área definida, se crea un elemento superpuesto
-            $.each(areas, function (index, area) {
-                var areaDiv = $('<div class="fp-interactive-area"></div>');
-                areaDiv.css({
-                    position: 'absolute',
-                    left: area.x + 'px',
-                    top: area.y + 'px',
-                    width: area.width + 'px',
-                    height: area.height + 'px',
-                    border: '2px dashed red',
-                    cursor: 'pointer'
-                });
-                // Según el tipo de área, se asigna la acción
-                if (area.type === 'linking') {
-                    areaDiv.on('click', function (e) {
-                        e.preventDefault();
-                        // Muestra el link en un mensaje y, si se confirma, se abre en nueva pestaña
-                        if (confirm("Ir a: " + area.value + "?")) {
-                            window.open(area.value, '_blank');
-                        }
-                    });
-                } else if (area.type === 'youtube') {
-                    areaDiv.on('click', function (e) {
-                        e.preventDefault();
-                        // Abre el video de YouTube en una ventana emergente (popup)
-                        var youtubeURL = "https://www.youtube.com/embed/" + area.value;
-                        window.open(youtubeURL, 'YouTube Video', 'width=800,height=600');
-                    });
-                }
-                // Se agrega el área sobre el visor (esto es una implementación básica; se puede mejorar posicionando según cada página)
-                $('#fp-pdf-viewer').append(areaDiv);
+document.addEventListener('DOMContentLoaded', function () {
+    const container = document.getElementById('fp-flipbook');
+    const pdfUrl = container.getAttribute('data-pdf');
+    const audioPlayer = document.getElementById('fp-audio-player');
+    const interactiveAreas = document.getElementById('fp-interactive-areas');
+  
+    if (!pdfUrl) return;
+  
+    const loadingTask = pdfjsLib.getDocument(pdfUrl);
+    loadingTask.promise.then(function (pdf) {
+      const totalPages = pdf.numPages;
+      const promises = [];
+  
+      for (let i = 1; i <= totalPages; i++) {
+        promises.push(
+          pdf.getPage(i).then(function (page) {
+            const viewport = page.getViewport({ scale: 1.5 });
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            canvas.classList.add('fp-page');
+  
+            return page.render({ canvasContext: context, viewport: viewport }).promise.then(() => {
+              const wrapper = document.createElement('div');
+              wrapper.classList.add('fp-page-wrapper');
+              wrapper.appendChild(canvas);
+              container.appendChild(wrapper);
             });
-        } catch (err) {
-            console.error("Error al interpretar el JSON de áreas interactivas: ", err);
+          })
+        );
+      }
+  
+      Promise.all(promises).then(() => {
+        $(container).turn({
+          width: 800,
+          height: 600,
+          autoCenter: true,
+          elevation: 50,
+          gradients: true,
+        });
+  
+        if (interactiveAreas && interactiveAreas.dataset.areas) {
+          try {
+            const areas = JSON.parse(interactiveAreas.dataset.areas);
+            areas.forEach((area) => {
+              const page = parseInt(area.page, 10);
+              const selector = `.fp-page-wrapper:nth-child(${page})`;
+              const target = container.querySelector(selector);
+              if (target) {
+                const hotspot = document.createElement('div');
+                hotspot.classList.add('fp-hotspot');
+                hotspot.style.left = `${area.x}px`;
+                hotspot.style.top = `${area.y}px`;
+                hotspot.style.width = `${area.width}px`;
+                hotspot.style.height = `${area.height}px`;
+                hotspot.title = area.tooltip || '';
+                if (area.link) {
+                  hotspot.onclick = () => window.open(area.link, '_blank');
+                }
+                target.style.position = 'relative';
+                target.appendChild(hotspot);
+              }
+            });
+          } catch (err) {
+            console.warn('Error al procesar áreas interactivas:', err);
+          }
         }
-    }
-});
+  
+        if (audioPlayer) {
+          audioPlayer.play().catch(() => {
+            console.log('El navegador bloqueó el autoplay. Requiere interacción del usuario.');
+          });
+        }
+      });
+    });
+  });
+  

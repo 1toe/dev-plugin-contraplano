@@ -1,27 +1,24 @@
-/* css/fp-front.css */
-
 #fp-flipbook-container {
-    position: relative;
-    margin: 0 auto;
-    max-width: 800px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 20px auto;
+  }
+
+  #fp-flipbook {
+    width: 800px;
+    height: 600px;
+  }
+
+.fp-page-wrapper {
+    width: 100%;
+    height: 100%;
 }
 
-#fp-pdf-viewer {
-    position: relative;
-}
-
-/* Cada página que renderiza Turn.js */
-.fp-page {
-    display: inline-block;
-}
-
-/* Estilo para las áreas interactivas */
-.fp-interactive-area {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-/* Contenedor del audio */
-#fp-audio-container {
-    margin-top: 20px;
-    text-align: center;
+.fp-hotspot {
+    position: absolute;
+    background-color: rgba(255, 0, 0, 0.3);
+    border: 2px dashed #ff0000;
+    cursor: pointer;
+    z-index: 10;
 }
