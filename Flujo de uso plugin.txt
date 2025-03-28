@@ -1,0 +1,19 @@
+Para desarrollar el plugin y testear: https://dev.contraplano.cl/testing/wp-admin/post.php?post=9866&action=edit
+
+Definiciones:
+
+    Series: Revistas mensuales, aquí se debe subir el pdf.
+    Plugin: Se debe instalar y saldría en el sidebar izquierdo.
+    Editor de página: Se llamaría el shortcode (Ej: [flipbook]) para luego utilizarlo visualmente en https://dev.contraplano.cl/testing/?page_id=9816
+
+
+1) El plugin se sube en:
+    https://dev.contraplano.cl/testing/wp-admin/plugin-install.php
+
+2) Series:
+    https://dev.contraplano.cl/testing/series/test/
+
+3) Pagina (editor) de testeo con Flipbook:
+        https://dev.contraplano.cl/testing/wp-admin/post.php?post=9816&action=edit&classic-editor
+    Pagina dev:
+        https://dev.contraplano.cl/testing/?page_id=9816&preview=true
