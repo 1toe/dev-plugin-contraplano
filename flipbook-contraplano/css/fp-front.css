@@ -1,27 +1,117 @@
 /* css/fp-front.css */
 
-#fp-flipbook-container {
+/* Contenedor principal de una instancia de flipbook */
+.flipbook-container {
     position: relative;
-    margin: 0 auto;
-    max-width: 800px;
+    margin: 20px auto; /* Añadir margen */
+    /* max-width: 90%; /* Hacerlo un poco responsivo */
+    /* width: 800px; /* O un ancho fijo si prefieres */
+    /* Podrías necesitar establecer un aspect-ratio o altura aquí */
 }
 
-#fp-pdf-viewer {
+/* Visor interno donde se renderiza PDF/Turn.js */
+.fp-pdf-viewer {
     position: relative;
+    /* background: #f0f0f0; /* Fondo mientras carga */
+    overflow: hidden; /* Importante para Turn.js */
+    margin: 0 auto; /* Centrar si Turn.js no lo hace */
 }
 
-/* Cada página que renderiza Turn.js */
-.fp-page {
-    display: inline-block;
-}
-
-/* Estilo para las áreas interactivas */
-.fp-interactive-area {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-/* Contenedor del audio */
-#fp-audio-container {
-    margin-top: 20px;
+/* Mensaje de carga */
+.fp-loading {
     text-align: center;
+    padding: 40px 20px;
+    font-style: italic;
+    color: #555;
+}
+
+/* Contenedor de páginas gestionado por Turn.js */
+/* Turn.js puede añadir sus propios estilos aquí */
+.fp-pages-container {
+   /* display: none; /* Se muestra por JS */ /* Ahora se oculta/muestra en JS */
+   /* Turn.js controlará el tamaño */
+}
+
+/* Estilo para CADA página (el div que contiene el canvas) */
+.fp-page {
+    background-color: white; /* Fondo blanco para las páginas */
+    /* Turn.js puede añadir 'position: absolute' */
+    /* Asegurarse de que el canvas llene el div si hay problemas */
+    overflow: hidden; /* Ocultar cualquier desbordamiento del canvas */
+    position: absolute;
+    left: 0; top: 0;
+    right: 0; bottom: 0;
+    margin: auto;
+    display: none;
+    backface-visibility: hidden;
+    perspective: 1500px;
+}
+.fp-page .fp-page-canvas {
+    display: block; /* Evitar espacio extra debajo del canvas */
+    max-width: 100%;
+    height: auto;
+}
+/* Página actual visible */
+.fp-page.active {
+    display: block;
+}
+/* Estilos añadidos por Turn.js (ejemplos, pueden variar) */
+.fp-pages-container .turn-page {
+    background-color: #fff;
+    background-size: 100% 100%;
+}
+
+/* Estilo para las áreas interactivas (si se implementan) */
+.fp-interactive-area {
+    position: absolute; /* Posicionadas dentro de su contenedor relativo (.fp-page) */
+    background: rgba(255, 255, 0, 0.2); /* Amarillo semi-transparente para depuración */
+    border: 1px dashed rgba(200, 0, 0, 0.6);
+    cursor: pointer;
+    box-sizing: border-box; /* Incluir borde en el tamaño */
+    z-index: 10; /* Asegurarse de que esté sobre el canvas */
+    transition: background-color 0.2s ease; /* Efecto hover suave */
+}
+.fp-interactive-area:hover {
+     background: rgba(255, 255, 0, 0.4);
+     border-color: rgba(200, 0, 0, 0.9);
+}
+
+/* Contenedor del reproductor de audio */
+.fp-audio-container {
+    margin-top: 15px;
+    text-align: center;
+}
+.fp-audio-container audio {
+    max-width: 100%; /* Asegurar que el control de audio sea responsivo */
+    width: 400px; /* O un ancho específico */
+}
+
+/* Estilos para flechas */
+.fp-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 999;
+    background: rgba(0,0,0,0.5);
+    color: #fff;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+}
+.fp-arrow-left {
+    left: 5px;
+}
+.fp-arrow-right {
+    right: 5px;
+}
+
+/* Estilos de la animación "page-flip" */
+@keyframes pageFlip {
+    0%   { transform: rotateY(0deg); }
+    50%  { transform: rotateY(-90deg); }
+    100% { transform: rotateY(-180deg); }
+}
+.fp-page.flipping {
+    transform-origin: left center;
+    animation: pageFlip 0.6s forwards;
 }

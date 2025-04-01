@@ -11,7 +11,7 @@ jQuery(document).ready(function ($) {
     }
 
     // Procesar cada instancia de flipbook en la página
-    $('.flipbook-container').each(function() {
+    $('.flipbook-container').each(function () {
         var $container = $(this);
         var pdfUrl = $container.data('pdf');
         var containerId = $container.attr('id'); // e.g., flipbook-container-9816-123
@@ -20,9 +20,7 @@ jQuery(document).ready(function ($) {
         var $viewer = $container.find('.fp-pdf-viewer'); // Buscar dentro del contenedor actual
         var $pagesContainer = $container.find('.fp-pages-container');
         var $loadingMessage = $container.find('.fp-loading');
-        var currentPage = 0;
-        var $prevArrow = $container.find('.fp-arrow-left');
-        var $nextArrow = $container.find('.fp-arrow-right');
+        // var $interactiveAreasContainer = $container.find('.fp-interactive-areas'); // Futuro
 
         if (!pdfUrl) {
             console.error('No PDF URL found for flipbook:', containerId);
@@ -31,9 +29,14 @@ jQuery(document).ready(function ($) {
         }
 
         if (typeof pdfjsLib === 'undefined') {
-             console.error('PDF.js library is not loaded.');
-             $loadingMessage.text('Error: Librería PDF no cargada.');
-             return;
+            console.error('PDF.js library is not loaded.');
+            $loadingMessage.text('Error: Librería PDF no cargada.');
+            return;
+        }
+        if (typeof $.fn.turn === 'undefined') {
+            console.error('Turn.js library is not loaded.');
+            $loadingMessage.text('Error: Librería Turn.js no cargada.');
+            return;
         }
 
         // console.log('Initializing Flipbook:', containerId, 'with PDF:', pdfUrl);
@@ -42,7 +45,7 @@ jQuery(document).ready(function ($) {
         loadingTask.promise.then(function (pdf) {
             // console.log('PDF loaded for', containerId);
             var totalPages = pdf.numPages;
-            var pagePromises = []; // Para saber cuándo todas las páginas están listas para mostrar
+            var pagePromises = []; // Para saber cuándo todas las páginas están listas para Turn.js
 
             // Limpiar contenedor de páginas (por si acaso)
             $pagesContainer.html('');
@@ -72,14 +75,14 @@ jQuery(document).ready(function ($) {
                         };
 
                         // Renderizar la página y devolver la promesa de renderizado
-                        return page.render(renderContext).promise.then(function() {
-                            // Crear el div de la página
+                        return page.render(renderContext).promise.then(function () {
+                            // Crear el div de la página para Turn.js
                             var pageDiv = $('<div class="fp-page"></div>').css({
                                 width: canvas.width + 'px',
                                 height: canvas.height + 'px'
                             }).append(canvas);
 
-                             // Almacenar temporalmente para ordenar después
+                            // Almacenar temporalmente para ordenar después
                             return { pageNum: pageNum, element: pageDiv };
                         });
                     });
@@ -88,60 +91,56 @@ jQuery(document).ready(function ($) {
             }
 
             // Esperar a que todas las páginas se rendericen
-            Promise.all(pagePromises).then(function(renderedPages) {
+            Promise.all(pagePromises).then(function (renderedPages) {
                 // console.log('All pages rendered for', containerId);
 
                 // Ordenar las páginas por número antes de añadirlas al DOM
-                renderedPages.sort(function(a, b) { return a.pageNum - b.pageNum; });
+                renderedPages.sort(function (a, b) { return a.pageNum - b.pageNum; });
 
-                // Convert pages to array, hide all, show first
-                $.each(renderedPages, function(index, pageData) {
-                    pageData.element.addClass(index === 0 ? 'active' : '');
+                // Añadir las páginas ordenadas al contenedor
+                $.each(renderedPages, function (index, pageData) {
                     $pagesContainer.append(pageData.element);
                 });
-                updateArrows();
 
-                // Mostrar flechas si hay más de 1 página
-                if (renderedPages.length > 1) {
-                    $prevArrow.show();
-                    $nextArrow.show();
-                }
-
-                $prevArrow.on('click', function() {
-                    if (currentPage > 0) {
-                        flipPage(currentPage, currentPage - 1);
-                    }
-                });
-                $nextArrow.on('click', function() {
-                    if (currentPage < renderedPages.length - 1) {
-                        flipPage(currentPage, currentPage + 1);
-                    }
-                });
-
-                function flipPage(oldIndex, newIndex) {
-                    var $oldPage = renderedPages[oldIndex].element;
-                    $oldPage.addClass('flipping');
-                    setTimeout(function(){
-                        $oldPage.removeClass('active flipping');
-                        var $newPage = renderedPages[newIndex].element;
-                        $newPage.addClass('active');
-                        currentPage = newIndex;
-                        updateArrows();
-                    }, 600); // Duración de la animación
-                }
-
-                function updateArrows() {
-                    $prevArrow.prop('disabled', currentPage === 0);
-                    $nextArrow.prop('disabled', currentPage === renderedPages.length - 1);
-                }
+                // Obtener dimensiones de la primera página para Turn.js
+                var firstPage = renderedPages[0].element;
+                var pageWidth = firstPage.width();
+                var pageHeight = firstPage.height();
 
                 // Ocultar mensaje de carga y mostrar contenedor de páginas
                 $loadingMessage.hide();
                 $pagesContainer.show();
 
-            }).catch(function(reason) {
-                 console.error("Error rendering PDF pages for " + containerId + ": ", reason);
-                 $loadingMessage.text('Error al renderizar las páginas del PDF.');
+                // Inicializar Turn.js
+                $pagesContainer.turn({
+                    width: pageWidth * 2, // Ancho total para dos páginas
+                    height: pageHeight,
+                    autoCenter: true,
+                    // display: 'double', // Mostrar dos páginas por defecto
+                    // acceleration: true, // Usar aceleración por hardware si está disponible
+                    // gradients: true, // Mostrar gradientes en el pliegue
+                    elevation: 50, // Sombra al pasar la página
+                    when: {
+                        turned: function (event, page, view) {
+                            // console.log('Turned to page', page, 'in view', view, 'for', containerId);
+                            // Futuro: Lógica para sincronizar audio o mostrar/ocultar áreas interactivas según la página 'page' o 'view'
+                        }
+                    }
+                });
+
+                // Ajustar tamaño si la ventana cambia (básico)
+                $(window).on('resize', function () {
+                    // Podrías necesitar recalcular el tamaño y reiniciar Turn.js aquí
+                    // $pagesContainer.turn('size', newWidth, newHeight);
+                }).trigger('resize'); // Trigger inicial
+
+                // Futuro: Procesar áreas interactivas después de inicializar Turn.js
+                // processInteractiveAreas($container, $interactiveAreasContainer, pageWidth, pageHeight);
+
+
+            }).catch(function (reason) {
+                console.error("Error rendering PDF pages for " + containerId + ": ", reason);
+                $loadingMessage.text('Error al renderizar las páginas del PDF.');
             });
 
         }, function (reason) {
