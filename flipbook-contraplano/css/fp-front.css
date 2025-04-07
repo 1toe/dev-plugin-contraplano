@@ -1,117 +1,433 @@
 /* css/fp-front.css */
 
-/* Contenedor principal de una instancia de flipbook */
+/* --- Variables --- */
+:root {
+    --fp-toolbar-height: 50px;
+    --fp-arrow-size: 40px;
+    --fp-page-bg: #fff;
+    --fp-viewer-bg: #f0f0f0;
+    --fp-container-bg: #eee;
+    --fp-toolbar-bg: #444;
+    --fp-toolbar-btn-color: #eee;
+    --fp-toolbar-btn-hover-bg: #555;
+    --fp-border-color: #ccc;
+    --fp-flip-duration: 0.6s;
+}
+
+/* --- Contenedor Principal --- */
 .flipbook-container {
     position: relative;
-    margin: 20px auto; /* Añadir margen */
-    /* max-width: 90%; /* Hacerlo un poco responsivo */
-    /* width: 800px; /* O un ancho fijo si prefieres */
-    /* Podrías necesitar establecer un aspect-ratio o altura aquí */
+    margin: 20px auto;
+    width: 100%;
+    max-width: 1200px; /* Ajusta según necesites */
+    display: flex;
+    flex-direction: column;
+    background: var(--fp-container-bg);
+    border-radius: 5px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    overflow: hidden; /* Importante */
+    min-height: 500px; /* Altura mínima */
+    height: 80vh; /* Altura relativa a la ventana gráfica */
 }
 
-/* Visor interno donde se renderiza PDF/Turn.js */
-.fp-pdf-viewer {
+/* --- Área del Visor (PDF + Flechas) --- */
+.fp-viewer-area {
     position: relative;
-    /* background: #f0f0f0; /* Fondo mientras carga */
-    overflow: hidden; /* Importante para Turn.js */
-    margin: 0 auto; /* Centrar si Turn.js no lo hace */
+    width: 100%;
+    flex-grow: 1; /* Ocupa el espacio vertical restante */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden; /* Oculta el desbordamiento inicial */
+    background: var(--fp-viewer-bg);
 }
 
-/* Mensaje de carga */
-.fp-loading {
-    text-align: center;
-    padding: 40px 20px;
-    font-style: italic;
-    color: #555;
+/* Visor PDF (Contenedor directo de las páginas) */
+.fp-pdf-viewer {
+    position: relative; /* Cambio a relativo */
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* overflow: visible; */ /* Permitir que el contenido escale */
+    transition: transform 0.3s ease; /* Transición suave para zoom */
+    transform-origin: center center; /* Zoom desde el centro */
+    user-select: none; /* Evitar selección de texto accidental */
 }
 
-/* Contenedor de páginas gestionado por Turn.js */
-/* Turn.js puede añadir sus propios estilos aquí */
+/* Contenedor de las Páginas */
 .fp-pages-container {
-   /* display: none; /* Se muestra por JS */ /* Ahora se oculta/muestra en JS */
-   /* Turn.js controlará el tamaño */
+    position: relative; /* Era absolute, cambiado a relative para contener páginas absolutas */
+    display: flex; /* Usar flex para alinear páginas */
+    justify-content: center;
+    align-items: center;
+    width: 90%; /* Ancho relativo al fp-pdf-viewer */
+    height: 90%; /* Alto relativo al fp-pdf-viewer */
+    perspective: 2500px; /* Perspectiva para efecto 3D */
+    transform-style: preserve-3d; /* Necesario para volteo 3D */
+    /* gap: 1%; */ /* Espacio gestionado por posicionamiento */
 }
 
-/* Estilo para CADA página (el div que contiene el canvas) */
+/* --- Estilo de Página --- */
 .fp-page {
-    background-color: white; /* Fondo blanco para las páginas */
-    /* Turn.js puede añadir 'position: absolute' */
-    /* Asegurarse de que el canvas llene el div si hay problemas */
-    overflow: hidden; /* Ocultar cualquier desbordamiento del canvas */
     position: absolute;
-    left: 0; top: 0;
-    right: 0; bottom: 0;
-    margin: auto;
-    display: none;
-    backface-visibility: hidden;
-    perspective: 1500px;
+    background-color: var(--fp-page-bg);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    overflow: hidden; /* Recortar contenido como el canvas */
+    border: 1px solid var(--fp-border-color);
+    display: none; /* Oculto por defecto, JS controla visibilidad */
+    transform-style: preserve-3d;
+    backface-visibility: hidden; /* Ocultar cara trasera durante volteo */
+    transition: transform var(--fp-flip-duration) ease-in-out,
+                opacity 0.3s ease,
+                box-shadow 0.3s ease;
+     /* Dimensiones controladas por JS y modo de vista */
 }
-.fp-page .fp-page-canvas {
-    display: block; /* Evitar espacio extra debajo del canvas */
-    max-width: 100%;
-    height: auto;
-}
-/* Página actual visible */
+
 .fp-page.active {
+    display: block; /* Mostrar página activa */
+}
+.fp-page.turning {
+     box-shadow: 0 10px 30px rgba(0,0,0,0.3); /* Sombra más pronunciada al girar */
+     z-index: 10; /* Asegurar que esté por encima de las otras */
+}
+
+
+.fp-page-canvas {
     display: block;
-}
-/* Estilos añadidos por Turn.js (ejemplos, pueden variar) */
-.fp-pages-container .turn-page {
-    background-color: #fff;
-    background-size: 100% 100%;
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Asegura que el contenido se ajuste */
 }
 
-/* Estilo para las áreas interactivas (si se implementan) */
-.fp-interactive-area {
-    position: absolute; /* Posicionadas dentro de su contenedor relativo (.fp-page) */
-    background: rgba(255, 255, 0, 0.2); /* Amarillo semi-transparente para depuración */
-    border: 1px dashed rgba(200, 0, 0, 0.6);
-    cursor: pointer;
-    box-sizing: border-box; /* Incluir borde en el tamaño */
-    z-index: 10; /* Asegurarse de que esté sobre el canvas */
-    transition: background-color 0.2s ease; /* Efecto hover suave */
+/* --- Modos de Vista (Controlado por data-view-mode en .flipbook-container) --- */
+
+/* Vista Doble Página */
+.flipbook-container[data-view-mode="double"] .fp-pages-container {
+    /* Ancho/Alto se ajustan por JS al renderizar */
 }
-.fp-interactive-area:hover {
-     background: rgba(255, 255, 0, 0.4);
-     border-color: rgba(200, 0, 0, 0.9);
+.flipbook-container[data-view-mode="double"] .fp-page.left-page {
+    transform-origin: right center; /* Punto de giro para página izquierda */
+    left: 0;
+    border-right: none;
+}
+.flipbook-container[data-view-mode="double"] .fp-page.right-page {
+    transform-origin: left center; /* Punto de giro para página derecha */
+    right: 0;
+    border-left: none;
+}
+/* Caso especial: Primera página sola y centrada en vista doble */
+.flipbook-container[data-view-mode="double"] .fp-page.single-center-page {
+    left: 50%;
+    transform: translateX(-50%);
+    transform-origin: center center; /* Origen central si está sola */
+     border: 1px solid var(--fp-border-color); /* Borde completo si está sola */
+}
+/* Caso especial: Última página sola y centrada si el total es impar */
+.flipbook-container[data-view-mode="double"] .fp-page.last-page.single-center-page {
+     /* Mismos estilos que first-page-center */
+     left: 50%;
+     transform: translateX(-50%);
+     transform-origin: center center;
+     border: 1px solid var(--fp-border-color);
 }
 
-/* Contenedor del reproductor de audio */
-.fp-audio-container {
-    margin-top: 15px;
-    text-align: center;
+
+/* Vista Página Única */
+.flipbook-container[data-view-mode="single"] .fp-pages-container {
+     /* Ancho/Alto se ajustan por JS */
 }
-.fp-audio-container audio {
-    max-width: 100%; /* Asegurar que el control de audio sea responsivo */
-    width: 400px; /* O un ancho específico */
+.flipbook-container[data-view-mode="single"] .fp-page {
+    /* width: 90%; */ /* JS calculará el tamaño */
+    /* height: 95%; */
+    left: 50%;
+    transform: translateX(-50%); /* Centrar horizontalmente */
+    transform-origin: center center; /* Punto de giro central */
+    border: 1px solid var(--fp-border-color); /* Borde completo */
 }
 
-/* Estilos para flechas */
+
+/* --- Animaciones de Volteo --- */
+/* Voltear hacia la derecha (página izquierda que se oculta) */
+.fp-page.flipping-right {
+    transform: rotateY(-180deg);
+    pointer-events: none; /* Evitar interacción durante animación */
+}
+/* Voltear hacia la izquierda (página derecha que se oculta) */
+.fp-page.flipping-left {
+     transform: rotateY(180deg); /* Asume que la página derecha es la que gira */
+     pointer-events: none;
+}
+/* Nueva página que aparece (izquierda) */
+.fp-page.coming-left {
+    transform: rotateY(-180deg); /* Empieza girada */
+}
+/* Nueva página que aparece (derecha) */
+.fp-page.coming-right {
+     transform: rotateY(180deg); /* Empieza girada */
+}
+
+
+/* --- Flechas de Navegación --- */
 .fp-arrow {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    z-index: 999;
-    background: rgba(0,0,0,0.5);
-    color: #fff;
+    z-index: 100;
+    background: rgba(0,0,0,0.3);
+    color: white;
     border: none;
-    padding: 10px 15px;
+    border-radius: 50%;
+    width: var(--fp-arrow-size);
+    height: var(--fp-arrow-size);
+    font-size: calc(var(--fp-arrow-size) * 0.5);
     cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0; /* Ocultas por defecto, aparecen al hacer hover en el contenedor */
+    pointer-events: none; /* No interactivas hasta que aparezcan */
 }
-.fp-arrow-left {
-    left: 5px;
+.flipbook-container:hover .fp-arrow {
+    opacity: 0.6; /* Mostrar flechas al hacer hover sobre el contenedor */
+    pointer-events: auto; /* Hacer interactivas */
 }
-.fp-arrow-right {
-    right: 5px;
+.fp-arrow:hover {
+    background: rgba(0,0,0,0.6);
+    transform: translateY(-50%) scale(1.1);
+    opacity: 1;
+}
+.fp-arrow:disabled {
+    opacity: 0.1 !important; /* Forzar baja opacidad al deshabilitar */
+    cursor: not-allowed;
+    transform: translateY(-50%) scale(1);
+    pointer-events: none;
+}
+.fp-arrow-left { left: 15px; }
+.fp-arrow-right { right: 15px; }
+
+/* --- Indicador de Carga --- */
+.fp-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 25px;
+    background: rgba(255,255,255,0.95);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1000;
+    color: #333;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.fp-loading::before { /* Spinner simple */
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #aaa;
+    border-top-color: #555;
+    border-radius: 50%;
+    animation: fp-spin 1s linear infinite;
+}
+@keyframes fp-spin {
+    to { transform: rotate(360deg); }
 }
 
-/* Estilos de la animación "page-flip" */
-@keyframes pageFlip {
-    0%   { transform: rotateY(0deg); }
-    50%  { transform: rotateY(-90deg); }
-    100% { transform: rotateY(-180deg); }
+/* --- Barra de Herramientas --- */
+.fp-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Distribuir grupos */
+    padding: 5px 15px;
+    background-color: var(--fp-toolbar-bg);
+    color: var(--fp-toolbar-btn-color);
+    height: var(--fp-toolbar-height);
+    flex-shrink: 0; /* Evitar que se encoja */
+    flex-wrap: wrap; /* Permitir que los grupos se envuelvan en pantallas pequeñas */
+    gap: 10px;
 }
-.fp-page.flipping {
-    transform-origin: left center;
-    animation: pageFlip 0.6s forwards;
+
+.fp-toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Espacio entre elementos dentro de un grupo */
+}
+
+/* Botones de la Barra de Herramientas */
+.fp-tool-btn {
+    background: none;
+    border: none;
+    color: var(--fp-toolbar-btn-color);
+    font-size: 18px; /* Tamaño del icono */
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    line-height: 1; /* Para alinear iconos correctamente */
+}
+.fp-tool-btn:hover {
+    background-color: var(--fp-toolbar-btn-hover-bg);
+    color: #fff;
+}
+.fp-tool-btn:active,
+.fp-tool-btn.active { /* Estilo para botón activo (ej. modo de vista) */
+    background-color: #666;
+     color: #fff;
+}
+.fp-tool-btn i { /* Ajustar tamaño/line-height si es necesario para los iconos */
+    vertical-align: middle;
+}
+
+
+/* Slider de Zoom */
+.fp-zoom-slider {
+    cursor: pointer;
+    width: 100px;
+    margin: 0 5px;
+    height: 5px; /* Hacer más delgado */
+    accent-color: #eee; /* Color del slider */
+     vertical-align: middle;
+}
+.fp-zoom-reset { /* Estilo específico si es necesario */ }
+
+/* Contenedor de Entrada de Página */
+.fp-page-input-container {
+    display: flex;
+    align-items: center;
+    background-color: rgba(255,255,255,0.1);
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+.fp-page-input {
+    width: 45px; /* Ancho ajustado */
+    padding: 4px 5px;
+    border-radius: 3px;
+    border: 1px solid #666;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    font-size: 13px;
+     -moz-appearance: textfield; /* Ocultar flechas en Firefox */
+}
+.fp-page-input::-webkit-outer-spin-button,
+.fp-page-input::-webkit-inner-spin-button { /* Ocultar flechas en Chrome/Safari */
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.fp-page-indicator {
+    font-size: 13px;
+    color: #ccc;
+    margin-left: 5px;
+    white-space: nowrap;
+}
+.fp-goto-page { /* Botón para ir a página */
+    margin-left: 5px;
+}
+
+
+/* Contenedor del Reproductor de Audio */
+.fp-audio-container {
+   margin-left: auto; /* Empujar a la derecha */
+}
+.fp-audio-player {
+    display: none; /* Oculto inicialmente */
+    max-height: 35px; /* Ajustar altura máxima */
+    vertical-align: middle;
+    opacity: 0.9;
+}
+.fp-audio-player.visible {
+    display: inline-block; /* Mostrar cuando tenga src */
+}
+
+/* --- Pantalla Completa --- */
+.flipbook-container.fullscreen-active {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none; /* Sobrescribir max-width */
+    z-index: 9999;
+    background-color: #333; /* Fondo oscuro en pantalla completa */
+     border-radius: 0; /* Sin bordes redondeados */
+}
+.flipbook-container.fullscreen-active .fp-toolbar {
+    /* Ajustes opcionales para la barra de herramientas en pantalla completa */
+}
+/* Icono del botón de pantalla completa */
+.fp-fullscreen i.fa-expand { display: inline-block; }
+.fp-fullscreen i.fa-compress { display: none; }
+.fullscreen-active .fp-fullscreen i.fa-expand { display: none; }
+.fullscreen-active .fp-fullscreen i.fa-compress { display: inline-block; } /* Mostrar icono de salir */
+
+
+/* --- Responsividad --- */
+@media (max-width: 992px) {
+    .fp-pages-container {
+        width: 95%; /* Ligeramente más ancho en pantallas medianas */
+        height: 95%;
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --fp-toolbar-height: auto; /* Altura automática para permitir wrapping */
+        --fp-arrow-size: 35px;
+    }
+     .flipbook-container {
+        height: 75vh; /* Reducir altura en pantallas más pequeñas */
+        min-height: 400px;
+    }
+    .fp-toolbar {
+        padding: 8px 10px;
+        justify-content: center; /* Centrar grupos cuando envuelven */
+        gap: 8px;
+    }
+     /* Forzar vista de página única en pantallas pequeñas podría ser una opción */
+    /* .flipbook-container { data-view-mode: single !important; } */
+    /* .fp-view-double { display: none; } */
+    /* .fp-view-single { display: block; background-color: #666; } */
+
+    .fp-arrow-left { left: 5px; }
+    .fp-arrow-right { right: 5px; }
+    .fp-zoom-slider { width: 80px; }
+     .fp-audio-container { margin-left: 0; order: 5; width: 100%; text-align: center; } /* Mover audio */
+     .fp-audio-player { max-width: 90%;}
+}
+
+@media (max-width: 480px) {
+    .fp-toolbar-group {
+        gap: 3px; /* Reducir espacio entre botones */
+    }
+    .fp-tool-btn {
+        font-size: 16px;
+        padding: 5px 6px;
+    }
+    .fp-zoom-slider { width: 70px; }
+    .fp-page-input { width: 40px; }
+    .fp-page-indicator { font-size: 12px; }
+    :root { --fp-arrow-size: 30px; }
+    .flipbook-container { height: 70vh; }
+}
+
+/* Estilos para depuración de áreas interactivas (si se implementan) */
+.fp-interactive-area {
+    position: absolute;
+    background: rgba(255, 255, 0, 0.15);
+    border: 1px dashed rgba(200, 0, 0, 0.5);
+    cursor: pointer;
+    box-sizing: border-box;
+    z-index: 20;
+    transition: background-color 0.2s ease;
+}
+.fp-interactive-area:hover {
+     background: rgba(255, 255, 0, 0.3);
+     border-color: rgba(200, 0, 0, 0.8);
 }

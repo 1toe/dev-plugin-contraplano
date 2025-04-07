@@ -1,201 +1,204 @@
 <?php
+
 /**
  * Plugin Name: Flipbook Contraplano
- * Description: Visualiza Flipbooks PDF interactivos. Incluye zonas interactivas y audio en ediciones especiales.
- * Version: 1.1
+ * Description: Visualiza Flipbooks PDF interactivos con audios por página.
+ * Version: 1.2
  * Author: a
  */
 
 if (!defined('ABSPATH')) exit;
 
-// Define constants for plugin paths and URLs
 define('FP_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('FP_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-// 1. Registrar tipo de contenido personalizado
-function fp_register_flipbook_post_type() {
+// Registrar tipo de contenido personalizado
+function fp_register_flipbook_post_type()
+{
     register_post_type('flipbook', [
-        'labels' => [
-            'name' => 'Flipbooks',
-            'singular_name' => 'Flipbook',
-            'add_new' => 'Agregar nuevo',
-            'add_new_item' => 'Agregar nuevo Flipbook',
-            'edit_item' => 'Editar Flipbook',
-            'new_item' => 'Nuevo Flipbook',
-            'view_item' => 'Ver Flipbook',
-            'search_items' => 'Buscar Flipbook',
-            'not_found' => 'No encontrado',
-        ],
+        'labels' => ['name' => 'Flipbooks'],
         'public' => true,
         'has_archive' => true,
         'menu_icon' => 'dashicons-book',
         'supports' => ['title'],
-        'rewrite' => ['slug' => 'flipbooks'],
     ]);
 }
 add_action('init', 'fp_register_flipbook_post_type');
 
-// 2. Agregar metabox para subir PDF y audio
-function fp_add_meta_box() {
+// Metabox para PDF y audios
+function fp_add_meta_box()
+{
     add_meta_box('fp_meta_box', 'Configuración del Flipbook', 'fp_meta_callback', 'flipbook', 'normal', 'high');
 }
 add_action('add_meta_boxes', 'fp_add_meta_box');
 
-function fp_meta_callback($post) {
+function fp_meta_callback($post)
+{
     wp_nonce_field('fp_save_meta_data', 'fp_meta_nonce');
-
     $pdf = get_post_meta($post->ID, 'fp_pdf', true);
-    $audio = get_post_meta($post->ID, 'fp_audio', true);
-
-    ?>
+    $audios = get_post_meta($post->ID, 'fp_audios', true) ?: [];
+?>
     <p>
         <label for="fp_pdf">PDF del Flipbook:</label><br>
         <input type="text" name="fp_pdf" id="fp_pdf" value="<?php echo esc_url($pdf); ?>" style="width:80%;" readonly>
-        <button type="button" class="button" id="fp_pdf_button">Subir o seleccionar PDF</button>
-        <?php if ($pdf): ?>
-            <p><small>URL actual: <?php echo esc_url($pdf); ?></small></p>
-        <?php endif; ?>
+        <button type="button" class="button" id="fp_pdf_button" title="Seleccionar o subir archivo PDF">Subir PDF</button>
     </p>
-    <p>
-        <label for="fp_audio">Audio del Flipbook (Opcional):</label><br>
-        <input type="text" name="fp_audio" id="fp_audio" value="<?php echo esc_url($audio); ?>" style="width:80%;" readonly>
-        <button type="button" class="button" id="fp_audio_button">Subir o seleccionar Audio</button>
-         <?php if ($audio): ?>
-            <p><small>URL actual: <?php echo esc_url($audio); ?></small></p>
-        <?php endif; ?>
-    </p>
-    <?php
+    <hr>
+    <p><strong>Audios por página:</strong> (El primer audio corresponde a la página 1, el segundo a la página 2, etc.)</p>
+    <div id="fp_audio_container">
+        <?php foreach ($audios as $index => $audio_url): 
+            $field_id = 'fp_audio_' . $index;
+        ?>
+            <div class="fp-audio-row" style="margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
+                <label for="<?php echo esc_attr($field_id); ?>" style="display: inline-block; width: 80px;">Página <?php echo $index + 1; ?>:</label>
+                <input type="text" name="fp_audios[]" id="<?php echo esc_attr($field_id); ?>" value="<?php echo esc_url($audio_url); ?>" style="width:70%; margin-right: 5px;" placeholder="URL del archivo de audio">
+                <button type="button" class="button remove-audio" title="Eliminar este audio">X</button>
+            </div>
+        <?php endforeach; ?>
+    </div>
+    <button type="button" class="button" id="add_audio_button">+ Agregar Audio</button>
+    
+    <script type="text/javascript">
+        jQuery(document).ready(function($) {
+            // Media uploader for PDF
+            var pdf_frame;
+            $('#fp_pdf_button').on('click', function(event){
+                event.preventDefault();
+                if (pdf_frame) { pdf_frame.open(); return; }
+                pdf_frame = wp.media({
+                    title: 'Seleccionar PDF',
+                    button: { text: 'Usar este PDF' },
+                    library: { type: 'application/pdf' }, // Filter for PDF files
+                    multiple: false
+                });
+                pdf_frame.on('select', function(){
+                    var attachment = pdf_frame.state().get('selection').first().toJSON();
+                    $('#fp_pdf').val(attachment.url);
+                });
+                pdf_frame.open();
+            });
+
+            // Add Audio Field
+            var audioIndex = <?php echo count($audios); ?>;
+            $('#add_audio_button').on('click', function(){
+                audioIndex++;
+                var fieldId = 'fp_audio_' + audioIndex;
+                var newField = 
+                    '<div class="fp-audio-row" style="margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee;">' +
+                    '  <label for="' + fieldId + '" style="display: inline-block; width: 80px;">Página ' + (audioIndex) + ':</label>' +
+                    '  <input type="text" name="fp_audios[]" id="' + fieldId + '" value="" style="width:70%; margin-right: 5px;" placeholder="URL del archivo de audio">' +
+                    '  <button type="button" class="button remove-audio" title="Eliminar este audio">X</button>' +
+                    '</div>';
+                $('#fp_audio_container').append(newField);
+                 // Update labels after adding/removing fields
+                 updateAudioLabels();
+            });
+
+            // Remove Audio Field
+            $('#fp_audio_container').on('click', '.remove-audio', function(){
+                $(this).closest('.fp-audio-row').remove();
+                 // Update labels after removing fields
+                 updateAudioLabels();
+            });
+            
+            // Function to update page numbers in labels
+             function updateAudioLabels() {
+                 $('#fp_audio_container .fp-audio-row').each(function(index) {
+                     $(this).find('label').html('Página ' + (index + 1) + ':');
+                     // Ensure ID is also updated if necessary (though typically static once created)
+                     // var newId = 'fp_audio_' + index;
+                     // $(this).find('input[type="text"]').attr('id', newId);
+                     // $(this).find('label').attr('for', newId);
+                 });
+                 // Update the index for adding new fields
+                 audioIndex = $('#fp_audio_container .fp-audio-row').length;
+             }
+
+        });
+    </script>
+<?php
 }
 
-function fp_save_meta($post_id) {
-    if (!isset($_POST['fp_meta_nonce']) || !wp_verify_nonce($_POST['fp_meta_nonce'], 'fp_save_meta_data')) {
-        return;
-    }
-    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
-        return;
-    }
-    if (!current_user_can('edit_post', $post_id)) {
-        return;
-    }
+function fp_save_meta($post_id)
+{
+    if (!isset($_POST['fp_meta_nonce']) || !wp_verify_nonce($_POST['fp_meta_nonce'], 'fp_save_meta_data')) return;
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if (!current_user_can('edit_post', $post_id)) return;
 
-    if (isset($_POST['fp_pdf'])) {
-        update_post_meta($post_id, 'fp_pdf', sanitize_url($_POST['fp_pdf']));
-    } else {
-         delete_post_meta($post_id, 'fp_pdf');
-    }
-
-    if (isset($_POST['fp_audio'])) {
-        update_post_meta($post_id, 'fp_audio', sanitize_url($_POST['fp_audio']));
-    } else {
-        delete_post_meta($post_id, 'fp_audio');
-    }
+    update_post_meta($post_id, 'fp_pdf', sanitize_url($_POST['fp_pdf'] ?? ''));
+    update_post_meta($post_id, 'fp_audios', array_map('sanitize_url', $_POST['fp_audios'] ?? []));
 }
 add_action('save_post_flipbook', 'fp_save_meta');
 
-// 3. Encolar script para media uploader en admin
-add_action('admin_enqueue_scripts', function($hook) {
-    global $post_type;
-    if (($hook !== 'post.php' && $hook !== 'post-new.php') || 'flipbook' !== $post_type) {
-        return;
-    }
-
-    wp_enqueue_media();
-
-    wp_add_inline_script('jquery', <<<JS
-    jQuery(document).ready(function($) {
-        function setupMediaUploader(buttonId, inputId, mediaTitle, mediaButtonText, mediaType) {
-            $('#' + buttonId).on('click', function(e) {
-                e.preventDefault();
-                var frame = wp.media({
-                    title: mediaTitle,
-                    button: { text: mediaButtonText },
-                    multiple: false,
-                    library: mediaType ? { type: mediaType } : undefined
-                });
-                frame.on('select', function() {
-                    var attachment = frame.state().get('selection').first().toJSON();
-                    $('#' + inputId).val(attachment.url);
-                    $('#' + inputId).next('p').remove();
-                    $('#' + inputId).after('<p><small>URL actual: ' + attachment.url + '</small></p>');
-                });
-                frame.open();
-            });
-        }
-
-        setupMediaUploader('fp_pdf_button', 'fp_pdf', 'Selecciona o sube un PDF', 'Usar este PDF', 'application/pdf');
-        setupMediaUploader('fp_audio_button', 'fp_audio', 'Selecciona o sube un archivo de audio', 'Usar este Audio', 'audio');
-    });
-JS);
-});
-
-// 4. Encolar scripts y estilos para el frontend (SOLO si se usa el shortcode)
-function fp_enqueue_frontend_assets() {
-    $pdfjs_version = '2.10.377';
-    wp_enqueue_script('pdfjs-lib', "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/$pdfjs_version/pdf.min.js", [], $pdfjs_version, true);
-    wp_enqueue_script('pdfjs-worker', "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/$pdfjs_version/pdf.worker.min.js", [], $pdfjs_version, true);
-
-    wp_enqueue_style('fp-front-style', FP_PLUGIN_URL . 'css/fp-front.css', [], '1.0');
-    wp_enqueue_script('fp-front-script', FP_PLUGIN_URL . 'js/fp-front.js', ['jquery', 'pdfjs-lib', 'pdfjs-worker'], '1.0', true);
-
-    wp_localize_script('fp-front-script', 'fpConfig', [
-       'pdfWorkerSrc' => "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/$pdfjs_version/pdf.worker.min.js"
-    ]);
-}
-
-// 5. Mostrar el Flipbook en el frontend via Shortcode
-function fp_flipbook_shortcode($atts) {
-    $atts = shortcode_atts([
-        'id' => '',
-    ], $atts, 'flipbook');
-
+// Shortcode para visualizar el Flipbook
+function fp_flipbook_shortcode($atts)
+{
+    $atts = shortcode_atts(['id' => ''], $atts, 'flipbook');
     $post_id = absint($atts['id']);
-
-    if (!$post_id || get_post_type($post_id) !== 'flipbook') {
-        return '<p>Error: Flipbook ID inválido o no encontrado.</p>';
-    }
+    if (!$post_id || get_post_type($post_id) !== 'flipbook') return '<p>Error: Flipbook no encontrado.</p>';
 
     $pdf = get_post_meta($post_id, 'fp_pdf', true);
-    $audio = get_post_meta($post_id, 'fp_audio', true);
+    // $audios = get_post_meta($post_id, 'fp_audios', true) ?: []; // Audios hidden for ISSUU style
+    if (empty($pdf)) return '<p>Error: No se ha configurado un PDF para este Flipbook.</p>';
 
-    if (empty($pdf)) {
-         return '<p>Error: No se ha configurado un PDF para este Flipbook.</p>';
-    }
+    // Registrar y encolar estilos y scripts
+    wp_register_style('fp-style', plugins_url('css/fp-front.css', __FILE__), [], '1.2.0'); // Version bump
+    wp_enqueue_style('fp-style');
 
-    fp_enqueue_frontend_assets();
+    wp_enqueue_script('pdfjs', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js', [], null, true);
+    wp_register_script('fp-front', plugins_url('js/fp-front.js', __FILE__), ['jquery', 'pdfjs'], '1.2.0', true); // Version bump
+    wp_enqueue_script('fp-front');
 
-    $container_id = 'flipbook-container-' . $post_id . '-' . wp_rand(100, 999);
+    // Pass only necessary data
+    wp_localize_script('fp-front', 'fpConfig', [
+        'pdfWorkerSrc' => 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js',
+        'postId' => $post_id
+        // 'audios' => $audios // Don't pass audios
+    ]);
 
-    ob_start(); // Etiqueta de inicio de salida para capturar el HTML generado dentro
-    ?>
-    <div id="<?php echo esc_attr($container_id); ?>" class="flipbook-container" data-pdf="<?php echo esc_url($pdf); ?>" <?php if ($audio): ?>data-audio="<?php echo esc_url($audio); ?>"<?php endif; ?>>
-        <!-- Flechas de navegación -->
-        <button class="fp-arrow fp-arrow-left" style="display:none;">&larr;</button>
-        <div id="fp-pdf-viewer-<?php echo esc_attr($post_id); ?>" class="fp-pdf-viewer">
-             <div class="fp-loading">Cargando Flipbook...</div>
-             <div id="fp-pages-container-<?php echo esc_attr($post_id); ?>" class="fp-pages-container" style="display:none;">
+    ob_start();
+?>
+    <div id="flipbook-container-<?php echo $post_id; ?>" class="flipbook-container" data-pdf="<?php echo esc_url($pdf); ?>" data-view-mode="single"> <!-- Default to single view -->
+        <div class="fp-viewer-area">
+            <div class="fp-pdf-viewer">
+                <div class="fp-pages-container"></div>
+                <div class="fp-loading">Cargando...</div>
+            </div>
+            <button class="fp-arrow fp-arrow-left" aria-label="Página anterior" title="Página anterior">‹</button>
+            <button class="fp-arrow fp-arrow-right" aria-label="Página siguiente" title="Página siguiente">›</button>
+        </div>
+
+        <div class="fp-toolbar">
+            <div class="fp-toolbar-section fp-page-nav">
+                 <div class="fp-page-indicator">
+                     <input type="number" class="fp-page-input" value="1" min="1" aria-label="Página actual">
+                     <span class="fp-page-separator">/</span>
+                     <span class="fp-total-pages">?</span>
+                 </div>
              </div>
-        </div>
-        <button class="fp-arrow fp-arrow-right" style="display:none;">&rarr;</button>
 
-        <?php if ($audio): ?>
-        <div id="fp-audio-container-<?php echo esc_attr($post_id); ?>" class="fp-audio-container">
-            <audio controls src="<?php echo esc_url($audio); ?>">
-                Tu navegador no soporta el elemento de audio.
-            </audio>
+            <div class="fp-toolbar-section fp-zoom-container">
+                <button class="fp-tool-btn fp-zoom-out" title="Alejar (Ctrl+-)" aria-label="Alejar">－</button>
+                <!-- <input type="range" class="fp-zoom-slider" min="0.5" max="3" step="0.1" value="1"> -->
+                <button class="fp-tool-btn fp-zoom-in" title="Acercar (Ctrl++)" aria-label="Acercar">＋</button>
+            </div>
+
+            <div class="fp-toolbar-section fp-tools-right">
+                 <!-- Hide view toggle for ISSUU style 
+                 <button class="fp-tool-btn fp-view-toggle" title="Alternar vista (V)">📖</button> 
+                 -->
+                 <div class="fp-search-container">
+                    <input type="text" class="fp-search-input" placeholder="Buscar...">
+                    <button class="fp-tool-btn fp-search-toggle-btn" title="Buscar (Ctrl+F)" aria-label="Buscar">🔍</button>
+                 </div>
+                 <button class="fp-tool-btn fp-fullscreen" title="Pantalla completa (F)" aria-label="Pantalla completa">⛶</button>
+            </div>
         </div>
-        <?php endif; ?>
+
+        <!-- Audio player is removed/hidden via CSS -->
+        <!-- <audio id="fp-audio-<?php echo $post_id; ?>" controls class="fp-audio-player"></audio> -->
     </div>
-    <?php
+<?php
     return ob_get_clean();
 }
 add_shortcode('flipbook', 'fp_flipbook_shortcode');
-
-function fp_delete_post_meta($post_id) {
-    if (get_post_type($post_id) === 'flipbook') {
-        delete_post_meta($post_id, 'fp_pdf');
-        delete_post_meta($post_id, 'fp_audio');
-    }
-}
-add_action('delete_post', 'fp_delete_post_meta');
-
-?>
