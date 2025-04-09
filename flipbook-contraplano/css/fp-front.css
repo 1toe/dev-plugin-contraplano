@@ -2,7 +2,7 @@
 
 /* --- Variables --- */
 :root {
-    ---height: 50px;
+    --fp-toolbar-height: 50px;
     --fp-arrow-size: 40px;
     --fp-page-bg: #fff;
     --fp-viewer-bg: #f0f0f0;
@@ -11,22 +11,7 @@
     --fp-toolbar-btn-color: #eee;
     --fp-toolbar-btn-hover-bg: #555;
     --fp-border-color: #ccc;
-    --fp-flip-duration: 0.6s;
-    --fp-accent-color: #e42535;
-    /* Color rojo para iconos de audio */
-    --fp-dark-mode-bg: #333;
-    --fp-dark-mode-text: #f1f1f1;
-}
-
-/* Versión Dark Mode */
-.flipbook-container.dark-mode {
-    --fp-page-bg: #222;
-    --fp-viewer-bg: #1a1a1a;
-    --fp-container-bg: #252525;
-    --fp-toolbar-bg: #333;
-    --fp-toolbar-btn-color: #f1f1f1;
-    --fp-toolbar-btn-hover-bg: #444;
-    --fp-border-color: #555;
+    --fp-accent-color: #e42535; /* Color rojo para iconos de audio */
 }
 
 /* --- Contenedor Principal --- */
@@ -43,8 +28,7 @@
     overflow: hidden;
     min-height: 500px;
     height: 80vh;
-    z-index: 1;
-    /* Importante para evitar problemas de superposición */
+    z-index: 1; /* Importante para evitar problemas de superposición */
 }
 
 /* --- Área del Visor (PDF + Flechas) --- */
@@ -60,18 +44,27 @@
     z-index: 5;
 }
 
-/* Visor PDF (Contenedor directo de las páginas) */
 .fp-pdf-viewer {
     position: relative;
     width: 100%;
     height: 100%;
     display: flex;
+    flex-direction: column; /* Asegúrate que las páginas estén apiladas verticalmente */
     align-items: center;
     justify-content: center;
+    gap: 20px; /* Espacio entre páginas */
     transition: transform 0.3s ease;
     transform-origin: center center;
     user-select: none;
     z-index: 10;
+    /* Prevenir zoom del navegador, permitir nuestro zoom personalizado */
+    touch-action: pan-x pan-y; 
+}
+
+/* Clase para el manejo de zoom personalizado */
+.fp-custom-zoom {
+    will-change: transform;
+    transition: transform 0.1s ease-out;
 }
 
 /* Contenedor de las Páginas */
@@ -113,8 +106,8 @@
     z-index: 20;
     transform: translateZ(0);
     transition: transform 0.6s cubic-bezier(0.645, 0.045, 0.355, 1),
-        opacity 0.3s ease,
-        box-shadow 0.3s ease;
+                opacity 0.3s ease,
+                box-shadow 0.3s ease;
 }
 
 .fp-page.turning {
@@ -127,14 +120,10 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
+    /* Asegurar que el canvas no se escale con el zoom del navegador */
+    max-width: 100%;
 }
 
-/* --- Modos de Vista (Controlado por data-view-mode en .flipbook-container) --- */
-.flipbook-container[data-view-mode="double"] .fp-page.left-page {
-    transform-origin: right center;
-    left: 0;
-    border-right: none;
-}
 
 .flipbook-container[data-view-mode="double"] .fp-page.right-page {
     transform-origin: left center;
@@ -165,50 +154,8 @@
     border: 1px solid var(--fp-border-color);
 }
 
-/* --- Animaciones de Volteo --- */
-/* Voltear hacia la derecha (página izquierda que se oculta) */
-.fp-page.flipping-right {
-    transform: rotateY(-180deg);
-    pointer-events: none;
-    opacity: 1;
-    z-index: 25;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    transform-origin: right center;
-    transition: transform 0.6s cubic-bezier(0.645, 0.045, 0.355, 1),
-        box-shadow 0.3s ease,
-        opacity 0.3s ease;
-}
 
-/* Voltear hacia la izquierda (página derecha que se oculta) */
-.fp-page.flipping-left {
-    transform: rotateY(180deg);
-    pointer-events: none;
-    opacity: 1;
-    z-index: 25;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    transform-origin: left center;
-    transition: transform 0.6s cubic-bezier(0.645, 0.045, 0.355, 1),
-        box-shadow 0.3s ease,
-        opacity 0.3s ease;
-}
 
-/* Nueva página que aparece (izquierda) */
-.fp-page.coming-left {
-    transform: rotateY(-180deg);
-    z-index: 20;
-    opacity: 1;
-    display: block;
-    transform-origin: right center;
-}
-
-/* Nueva página que aparece (derecha) */
-.fp-page.coming-right {
-    transform: rotateY(180deg);
-    z-index: 20;
-    opacity: 1;
-    display: block;
-    transform-origin: left center;
-}
 
 /* Animación para las páginas que aparecen */
 .fp-page.coming-left.active,
@@ -217,8 +164,8 @@
     z-index: 30;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
     transition: transform 0.6s cubic-bezier(0.645, 0.045, 0.355, 1),
-        box-shadow 0.3s ease,
-        opacity 0.3s ease;
+                box-shadow 0.3s ease,
+                opacity 0.3s ease;
 }
 
 /* --- Flechas de Navegación --- */
@@ -327,8 +274,8 @@
 
 /* Botones de la Barra de Herramientas */
 .fp-tool-btn {
-    background: none;
-    border: none;
+    background: #333;
+    border: 1px solid #666;
     color: var(--fp-toolbar-btn-color);
     font-size: 18px;
     cursor: pointer;
@@ -353,34 +300,23 @@
     vertical-align: middle;
 }
 
-/* Slider de Zoom */
-.fp-zoom-slider {
-    cursor: pointer;
-    width: 100px;
-    margin: 0 5px;
-    height: 5px;
-    accent-color: #eee;
-    vertical-align: middle;
-}
-
 /* Contenedor de Entrada de Página */
 .fp-page-input-container {
     display: flex;
     align-items: center;
-    background-color: rgba(255, 255, 255, 0.1);
+
     padding: 3px 8px;
     border-radius: 4px;
 }
+
 
 .fp-page-input {
     width: 45px;
     padding: 4px 5px;
     border-radius: 3px;
-    border: 1px solid #666;
-    background-color: #555;
     color: #fff;
     text-align: center;
-    font-size: 13px;
+    font-size: 20px;
 }
 
 .fp-page-input::-webkit-outer-spin-button,
@@ -390,7 +326,7 @@
 }
 
 .fp-page-indicator {
-    font-size: 13px;
+    font-size: 20px;
     color: #ccc;
     margin-left: 5px;
     white-space: nowrap;
@@ -427,6 +363,30 @@
     z-index: 9999;
     background-color: #333;
     border-radius: 0;
+    /* Prevenir el zoom del navegador en pantalla completa */
+    overflow: hidden;
+}
+
+/* Garantizar que el visor ocupe todo el espacio disponible en pantalla completa */
+.fullscreen-active .fp-viewer-area {
+    height: calc(100% - var(--fp-toolbar-height));
+    width: 100%;
+}
+
+/* Asegurar que la barra de herramientas permanezca visible y no afectada por el zoom */
+.fullscreen-active .fp-toolbar {
+    position: relative;
+    width: 100%;
+    z-index: 100;
+}
+
+/* Clase específica para cuando se aplica zoom personalizado */
+.fp-zooming {
+    cursor: zoom-in;
+}
+
+.fp-zooming.fp-zooming-out {
+    cursor: zoom-out;
 }
 
 /* Icono del botón de pantalla completa */
@@ -475,7 +435,7 @@
 
 .fp-interactive-area.fp-page-jump-area:hover {
     background-color: rgba(0, 180, 0, 0.15);
-    border-color: rgba(0, 180, 0, 0.5);
+    border-color: rgba(0, 0, 0, 0.5);
 }
 
 /* Icono de área de audio */
@@ -576,10 +536,6 @@
     flex-direction: column;
 }
 
-.dark-mode .fp-popup {
-    background-color: #333;
-    color: white;
-}
 
 .fp-popup-header {
     padding: 15px;
@@ -589,10 +545,6 @@
     border-bottom: 1px solid #ddd;
 }
 
-.dark-mode .fp-popup-header {
-    border-bottom-color: #555;
-}
-
 .fp-popup-header h3 {
     margin: 0;
     padding: 0;
@@ -600,9 +552,7 @@
     color: #333;
 }
 
-.dark-mode .fp-popup-header h3 {
-    color: white;
-}
+
 
 .fp-popup-close {
     background: none;
@@ -614,14 +564,6 @@
 
 .fp-popup-close:hover {
     color: #333;
-}
-
-.dark-mode .fp-popup-close {
-    color: #aaa;
-}
-
-.dark-mode .fp-popup-close:hover {
-    color: white;
 }
 
 .fp-popup-body {
@@ -669,16 +611,13 @@
 .fp-background-option.active {
     border-color: white;
     transform: scale(1.2);
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 5px rgba(0,0,0,0.3);
 }
 
 .fp-background-light {
     background-color: #f0f0f0;
 }
 
-.fp-background-dark {
-    background-color: #333;
-}
 
 /* --- Responsividad --- */
 @media (max-width: 992px) {
