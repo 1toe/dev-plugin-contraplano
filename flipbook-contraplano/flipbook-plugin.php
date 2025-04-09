@@ -192,3 +192,87 @@ function fp_flipbook_shortcode($atts)
     return ob_get_clean();
 }
 add_shortcode('flipbook', 'fp_flipbook_shortcode');
+
+// Agregar botón "Insertar Flipbook" al editor
+function fp_add_insert_flipbook_button() {
+    // Verificar si estamos en el editor
+    $screen = get_current_screen();
+    if (!$screen || !method_exists($screen, 'is_block_editor') || $screen->is_block_editor()) {
+        // No cargar en Gutenberg, solo en el editor clásico
+        return;
+    }
+
+    wp_enqueue_script(
+        'fp-insert-flipbook',
+        FP_PLUGIN_URL . 'js/fp-insert-flipbook.js',
+        array('jquery'),
+        '1.0.0',
+        true
+    );
+    
+    // Pasar datos de flipbooks disponibles al script
+    $flipbooks = get_posts([
+        'post_type' => 'flipbook',
+        'numberposts' => -1,
+        'orderby' => 'title',
+        'order' => 'ASC'
+    ]);
+    
+    $flipbooks_data = [];
+    foreach ($flipbooks as $flipbook) {
+        $flipbooks_data[] = [
+            'id' => $flipbook->ID,
+            'title' => $flipbook->post_title
+        ];
+    }
+    
+    wp_localize_script('fp-insert-flipbook', 'fpInsertData', [
+        'flipbooks' => $flipbooks_data,
+        'button_text' => 'Insertar Flipbook',
+        'modal_title' => 'Seleccionar un Flipbook',
+        'modal_button' => 'Insertar',
+        'cancel_button' => 'Cancelar'
+    ]);
+}
+add_action('admin_enqueue_scripts', 'fp_add_insert_flipbook_button');
+
+// Para el editor de Gutenberg - Registrar bloque
+function fp_register_gutenberg_flipbook_button() {
+    // Solo cargar en admin y si Gutenberg está activo
+    if (!is_admin() || !function_exists('register_block_type')) {
+        return;
+    }
+    
+    wp_register_script(
+        'fp-gutenberg-button',
+        FP_PLUGIN_URL . 'js/fp-gutenberg-button.js',
+        array('wp-blocks', 'wp-element', 'wp-components', 'wp-editor', 'wp-api-fetch'),
+        '1.0.0',
+        true
+    );
+    
+    // Pasar datos de flipbooks disponibles al script
+    $flipbooks = get_posts([
+        'post_type' => 'flipbook',
+        'numberposts' => -1,
+        'orderby' => 'title',
+        'order' => 'ASC'
+    ]);
+    
+    $flipbooks_data = [];
+    foreach ($flipbooks as $flipbook) {
+        $flipbooks_data[] = [
+            'id' => $flipbook->ID,
+            'title' => $flipbook->post_title
+        ];
+    }
+    
+    wp_localize_script('fp-gutenberg-button', 'fpGutenbergData', [
+        'flipbooks' => $flipbooks_data
+    ]);
+    
+    register_block_type('flipbook-contraplano/insert-button', [
+        'editor_script' => 'fp-gutenberg-button',
+    ]);
+}
+add_action('init', 'fp_register_gutenberg_flipbook_button');

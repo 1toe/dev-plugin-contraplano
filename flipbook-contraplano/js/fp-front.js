@@ -539,7 +539,8 @@ jQuery(document).ready(function ($) {
                 .attr({
                     'data-area-index': index,
                     'data-area-type': area.type || 'url',
-                    'data-area-page': areaPage
+                    'data-area-page': areaPage,
+                    'data-target': area.url || area.target_page || area.youtube_url || area.audio_url || ''
                 });
 
             // Añadir tooltip si existe
