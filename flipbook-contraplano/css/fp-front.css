@@ -2,7 +2,7 @@
 
 /* --- Variables --- */
 :root {
-    --fp-toolbar-height: 50px;
+    ---height: 50px;
     --fp-arrow-size: 40px;
     --fp-page-bg: #fff;
     --fp-viewer-bg: #f0f0f0;
