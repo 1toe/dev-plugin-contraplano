@@ -1,3 +1,6 @@
+
+# Instalar Extensión para usar WordPress de Forma Local con VSC: https://marketplace.visualstudio.com/items/?itemName=WordPressPlayground.wordpress-playground
+
 # INSTALACIÓN Y USO DEL PLUGIN FP-CP
 ## ESTRUCTURA DEL PLUGIN
 ```
