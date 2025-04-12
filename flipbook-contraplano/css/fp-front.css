@@ -1,503 +1,325 @@
-/* css/fp-front.css */
+/**
+ * Flipbook Contraplano - Estilos de frontend
+ * Versión: 2.0
+ * Compatibilidad con Turn.js, SweetAlert2 y Plyr
+ */
 
-/* --- Variables --- */
+/* Variables CSS (Asegúrate de que estén definidas, por ejemplo, en :root o en el contenedor) */
 :root {
-    --fp-toolbar-height: 50px;
-    --fp-arrow-size: 40px;
-    --fp-page-bg: #fff;
-    --fp-viewer-bg: #f0f0f0;
-    --fp-container-bg: #eee;
-    --fp-toolbar-bg: #444;
-    --fp-toolbar-btn-color: #eee;
-    --fp-toolbar-btn-hover-bg: #555;
-    --fp-border-color: #ccc;
-    --fp-accent-color: #e42535; /* Color rojo para iconos de audio */
+    --fp-text-color: #333;
+    --fp-bg-color: #fff;
+    --fp-border-color: #ddd;
+    --fp-shadow-color: rgba(0, 0, 0, 0.1);
+    --fp-accent-color: #e42535; /* Color rojo de ejemplo */
 }
 
-/* --- Contenedor Principal --- */
+.dark-mode {
+    --fp-text-color: #eee;
+    --fp-bg-color: #222;
+    --fp-border-color: #444;
+    --fp-shadow-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Contenedor principal */
 .flipbook-container {
     position: relative;
-    margin: 20px auto;
     width: 100%;
-    max-width: 1200px;
-    display: flex;
-    flex-direction: column;
-    background: var(--fp-container-bg);
-    border-radius: 5px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    margin: 0 auto 30px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+    color: var(--fp-text-color);
+    background-color: var(--fp-bg-color);
+    border-radius: 6px;
+    box-shadow: 0 2px 10px var(--fp-shadow-color);
     overflow: hidden;
-    min-height: 500px;
-    height: 80vh;
-    z-index: 1; /* Importante para evitar problemas de superposición */
+    transition: all 0.3s ease, outline 0.1s ease; /* Añadir transición para outline */
 }
 
-/* --- Área del Visor (PDF + Flechas) --- */
+/* Estilo de foco */
+.flipbook-container.has-focus {
+    outline: 2px solid var(--fp-accent-color);
+    outline-offset: 2px;
+}
+
+/* Contenedor del visor principal */
 .fp-viewer-area {
     position: relative;
     width: 100%;
-    flex-grow: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background-color: #f5f5f5;
+    transition: background-color 0.3s;
     overflow: hidden;
-    background: var(--fp-viewer-bg);
-    z-index: 5;
 }
 
+.dark-mode .fp-viewer-area {
+    background-color: #333;
+}
+
+/* Visor PDF */
 .fp-pdf-viewer {
     position: relative;
     width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column; /* Asegúrate que las páginas estén apiladas verticalmente */
-    align-items: center;
-    justify-content: center;
-    gap: 20px; /* Espacio entre páginas */
-    transition: transform 0.3s ease;
-    transform-origin: center center;
-    user-select: none;
-    z-index: 10;
-    /* Prevenir zoom del navegador, permitir nuestro zoom personalizado */
-    touch-action: pan-x pan-y; 
+    height: 600px;
+    background-color: var(--fp-bg-color);
+    overflow: hidden;
 }
 
-/* Clase para el manejo de zoom personalizado */
-.fp-custom-zoom {
-    will-change: transform;
-    transition: transform 0.1s ease-out;
-}
-
-/* Contenedor de las Páginas */
+/* Contenedor de páginas - Base para Turn.js y modo manual */
 .fp-pages-container {
     position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 90%;
-    height: 90%;
-    perspective: 2000px;
-    perspective-origin: center center;
-    transform-style: preserve-3d;
-    z-index: 15;
-}
-
-/* --- Estilo de Página --- */
-.fp-page {
-    position: absolute;
-    background-color: var(--fp-page-bg);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    border: 1px solid var(--fp-border-color);
-    display: none;
-    transform-style: preserve-3d;
-    backface-visibility: hidden;
-    transition: transform var(--fp-flip-duration) ease-in-out,
-        opacity 0.3s ease,
-        box-shadow 0.3s ease;
-    -webkit-user-select: text;
-    -moz-user-select: text;
-    -ms-user-select: text;
-    user-select: text;
-}
-
-.fp-page.active {
-    display: block;
-    opacity: 1;
-    z-index: 20;
-    transform: translateZ(0);
-    transition: transform 0.6s cubic-bezier(0.645, 0.045, 0.355, 1),
-                opacity 0.3s ease,
-                box-shadow 0.3s ease;
-}
-
-.fp-page.turning {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    z-index: 25;
-}
-
-.fp-page-canvas {
-    display: block;
     width: 100%;
     height: 100%;
-    object-fit: contain;
-    /* Asegurar que el canvas no se escale con el zoom del navegador */
-    max-width: 100%;
-}
-
-
-.flipbook-container[data-view-mode="double"] .fp-page.right-page {
-    transform-origin: left center;
-    right: 0;
-    border-left: none;
-}
-
-/* Caso especial: Primera página sola y centrada en vista doble */
-.flipbook-container[data-view-mode="double"] .fp-page.single-center-page {
-    left: 50%;
-    transform: translateX(-50%);
     transform-origin: center center;
+    display: flex; /* Añadido para layout sin Turn.js */
+    justify-content: center; /* Añadido para layout sin Turn.js */
+    align-items: center; /* Añadido para layout sin Turn.js */
+}
+
+/* Estilos específicos para Turn.js */
+.fp-turnjs-container {
+    margin: 0 auto;
+}
+
+.fp-turnjs-container .turn-page {
+    background-color: var(--fp-bg-color);
     border: 1px solid var(--fp-border-color);
 }
 
-/* Caso especial: Última página sola y centrada si el total es impar */
-.flipbook-container[data-view-mode="double"] .fp-page.last-page.single-center-page {
-    left: 50%;
-    transform: translateX(-50%);
-    transform-origin: center center;
+/* Estilos para layout sin Turn.js */
+.fp-pages-container:not(.fp-turnjs-container) .fp-page {
+    position: absolute; /* Posicionamiento absoluto para superponer si es necesario */
+    width: 50%; /* Por defecto, para vista doble */
+    height: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    background-color: var(--fp-bg-color);
     border: 1px solid var(--fp-border-color);
+    display: none; /* Ocultar por defecto */
 }
 
-.flipbook-container[data-view-mode="single"] .fp-page {
-    left: 50%;
-    transform: translateX(-50%);
-    transform-origin: center center;
-    border: 1px solid var(--fp-border-color);
+.fp-pages-container:not(.fp-turnjs-container) .fp-page.active {
+    display: block; /* Mostrar página activa */
+    z-index: 1; /* Asegurar que la activa esté visible */
 }
 
-
-
-
-/* Animación para las páginas que aparecen */
-.fp-page.coming-left.active,
-.fp-page.coming-right.active {
-    transform: rotateY(0deg);
-    z-index: 30;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
-    transition: transform 0.6s cubic-bezier(0.645, 0.045, 0.355, 1),
-                box-shadow 0.3s ease,
-                opacity 0.3s ease;
-}
-
-/* --- Flechas de Navegación --- */
-.fp-arrow {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 100;
-    background: rgba(0, 0, 0, 0.3);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: var(--fp-arrow-size);
-    height: var(--fp-arrow-size);
-    font-size: calc(var(--fp-arrow-size) * 0.5);
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
+/* Vista doble sin Turn.js */
+.fp-pages-container[data-view-mode="double"]:not(.fp-turnjs-container) {
+    display: flex; /* Usar flex para alinear páginas */
     justify-content: center;
-    opacity: 0;
-    pointer-events: none;
+    align-items: stretch;
 }
 
-.flipbook-container:hover .fp-arrow {
-    opacity: 0.6;
-    pointer-events: auto;
+.fp-pages-container[data-view-mode="double"]:not(.fp-turnjs-container) .fp-page {
+    position: relative; /* Resetear posición para flex */
+    width: 50%;
+    display: block; /* Mostrar ambas páginas */
 }
 
-.fp-arrow:hover {
-    background: rgba(0, 0, 0, 0.6);
-    transform: translateY(-50%) scale(1.1);
-    opacity: 1;
+.fp-pages-container[data-view-mode="double"]:not(.fp-turnjs-container) .fp-page.left-page {
+    order: 1;
 }
 
-.fp-arrow:disabled {
-    opacity: 0.1 !important;
-    cursor: not-allowed;
-    transform: translateY(-50%) scale(1);
-    pointer-events: none;
+.fp-pages-container[data-view-mode="double"]:not(.fp-turnjs-container) .fp-page.right-page {
+    order: 2;
 }
 
-.fp-arrow-left {
-    left: 15px;
-}
-
-.fp-arrow-right {
-    right: 15px;
-}
-
-/* --- Indicador de Carga --- */
-.fp-loading {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    padding: 15px 25px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    color: #333;
-    font-style: italic;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.fp-loading::before {
-    content: '';
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    border: 2px solid #aaa;
-    border-top-color: #555;
-    border-radius: 50%;
-    animation: fp-spin 1s linear infinite;
-}
-
-@keyframes fp-spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* --- Barra de Herramientas --- */
-.fp-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 5px 15px;
-    background-color: var(--fp-toolbar-bg);
-    color: var(--fp-toolbar-btn-color);
-    height: var(--fp-toolbar-height);
-    flex-shrink: 0;
-    flex-wrap: wrap;
-    gap: 10px;
-    z-index: 50;
-}
-
-.fp-toolbar-group {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-/* Botones de la Barra de Herramientas */
-.fp-tool-btn {
-    background: #333;
-    border: 1px solid #666;
-    color: var(--fp-toolbar-btn-color);
-    font-size: 18px;
-    cursor: pointer;
-    padding: 6px 8px;
-    border-radius: 4px;
-    transition: background-color 0.2s ease, color 0.2s ease;
-    line-height: 1;
-}
-
-.fp-tool-btn:hover {
-    background-color: var(--fp-toolbar-btn-hover-bg);
-    color: #fff;
-}
-
-.fp-tool-btn:active,
-.fp-tool-btn.active {
-    background-color: #666;
-    color: #fff;
-}
-
-.fp-tool-btn i {
-    vertical-align: middle;
-}
-
-/* Contenedor de Entrada de Página */
-.fp-page-input-container {
-    display: flex;
-    align-items: center;
-
-    padding: 3px 8px;
-    border-radius: 4px;
-}
-
-
-.fp-page-input {
-    width: 45px;
-    padding: 4px 5px;
-    border-radius: 3px;
-    color: #fff;
-    text-align: center;
-    font-size: 20px;
-}
-
-.fp-page-input::-webkit-outer-spin-button,
-.fp-page-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-.fp-page-indicator {
-    font-size: 20px;
-    color: #ccc;
-    margin-left: 5px;
-    white-space: nowrap;
-}
-
-.fp-goto-page {
-    margin-left: 5px;
-}
-
-/* Contenedor del Reproductor de Audio */
-.fp-audio-container {
-    margin-left: auto;
-}
-
-.fp-audio-player {
-    display: none;
-    max-height: 35px;
-    vertical-align: middle;
-    opacity: 0.9;
-}
-
-.fp-audio-player.visible {
-    display: inline-block;
-}
-
-/* --- Pantalla Completa --- */
-.flipbook-container.fullscreen-active {
-    position: fixed;
-    top: 0;
+/* Vista simple sin Turn.js */
+.fp-pages-container[data-view-mode="single"]:not(.fp-turnjs-container) .fp-page {
+    width: 100%; /* Ocupar todo el ancho */
     left: 0;
-    width: 100%;
-    height: 100%;
-    max-width: none;
-    z-index: 9999;
-    background-color: #333;
-    border-radius: 0;
-    /* Prevenir el zoom del navegador en pantalla completa */
-    overflow: hidden;
+    top: 0;
 }
 
-/* Garantizar que el visor ocupe todo el espacio disponible en pantalla completa */
-.fullscreen-active .fp-viewer-area {
-    height: calc(100% - var(--fp-toolbar-height));
-    width: 100%;
+/* Página única centrada (primera o última) sin Turn.js */
+.fp-pages-container:not(.fp-turnjs-container) .fp-page.single-center-page {
+    position: relative; /* Resetear posición */
+    width: 50%; /* Ocupar la mitad como si fuera doble, pero centrada */
+    max-width: 80%; /* Limitar ancho máximo */
+    display: block;
+    margin: 0 auto; /* Centrar */
 }
 
-/* Asegurar que la barra de herramientas permanezca visible y no afectada por el zoom */
-.fullscreen-active .fp-toolbar {
+/* Contenido de la página */
+.fp-page-content {
     position: relative;
     width: 100%;
-    z-index: 100;
+    height: 100%;
+    overflow: hidden;
 }
 
-/* Clase específica para cuando se aplica zoom personalizado */
-.fp-zooming {
-    cursor: zoom-in;
+/* Placeholder para páginas vaciadas en Turn.js */
+.fp-page.fp-empty-placeholder .fp-page-content {
+    background-color: #f0f0f0; /* Fondo sutil para indicar vacío */
+}
+.dark-mode .fp-page.fp-empty-placeholder .fp-page-content {
+    background-color: #2a2a2a;
 }
 
-.fp-zooming.fp-zooming-out {
-    cursor: zoom-out;
+/* Controladores y navegación */
+.fp-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: var(--fp-bg-color); /* Asegurar que use variable */
+    border-top: 1px solid var(--fp-border-color); /* Asegurar que use variable */
+    transition: background-color 0.3s, border-color 0.3s; /* Añadir transición */
 }
 
-/* Icono del botón de pantalla completa */
-.fp-fullscreen i.dashicons-fullscreen-alt,
-.fp-fullscreen i.dashicons-fullscreen-exit-alt {
-    display: inline-block;
+.fp-page-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.fullscreen-active .fp-fullscreen i.dashicons-fullscreen-alt {
-    display: none;
+/* Botones estándar */
+.fp-btn {
+    background-color: transparent;
+    border: 1px solid var(--fp-border-color); /* Asegurar que use variable */
+    color: var(--fp-text-color); /* Asegurar que use variable */
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
 }
 
-.fullscreen-active .fp-fullscreen i.dashicons-fullscreen-exit-alt {
-    display: inline-block;
+.fp-btn:hover:not(:disabled) {
+    background-color: var(--fp-accent-color);
+    color: white;
+    border-color: var(--fp-accent-color);
 }
 
-/* Estilos para áreas interactivas */
+.fp-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Input de página */
+.fp-page-input {
+    width: 40px;
+    height: 36px;
+    text-align: center;
+    border: 1px solid var(--fp-border-color); /* Asegurar que use variable */
+    border-radius: 4px;
+    background-color: var(--fp-bg-color); /* Asegurar que use variable */
+    color: var(--fp-text-color); /* Asegurar que use variable */
+    padding: 0 5px;
+    transition: background-color 0.3s, border-color 0.3s, color 0.3s; /* Añadir transición */
+}
+
+.dark-mode .fp-page-input {
+    background-color: #444;
+}
+
+/* Iconos y flechas */
+.fp-arrow-left:before {
+    content: "←";
+}
+
+.fp-arrow-right:before {
+    content: "→";
+}
+
+/* Mensaje de carga */
+.fp-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.7); /* Fondo claro por defecto */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--fp-accent-color);
+    font-size: 18px;
+    font-weight: bold;
+    z-index: 1000;
+    transition: background-color 0.3s, color 0.3s;
+    animation: pulse 1.5s infinite; /* Mover animación aquí */
+}
+
+.dark-mode .fp-loading {
+    background-color: rgba(0, 0, 0, 0.7); /* Fondo oscuro */
+    color: #eee; /* Texto más claro */
+}
+
+/* Áreas interactivas */
 .fp-interactive-area {
     position: absolute;
-    background-color: rgba(0, 0, 0, 0.05);
-    border: 1px dashed rgba(0, 0, 0, 0.2);
     cursor: pointer;
-    z-index: 50;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
+    z-index: 10;
+    background-color: rgba(228, 37, 53, 0.1);
+    border: 1px dashed rgba(228, 37, 53, 0.3);
+    transition: all 0.2s ease;
 }
 
 .fp-interactive-area:hover {
-    background-color: rgba(0, 0, 0, 0.15);
-    border-color: rgba(0, 0, 0, 0.4);
+    background-color: rgba(228, 37, 53, 0.2);
+    border: 1px dashed rgba(228, 37, 53, 0.5);
 }
 
-.fp-interactive-area.fp-youtube-area {
-    background-color: rgba(220, 0, 0, 0.05);
-    border: 1px dashed rgba(220, 0, 0, 0.3);
+.fp-interactive-tooltip {
+    position: absolute;
+    top: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--fp-accent-color);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
-.fp-interactive-area.fp-youtube-area:hover {
-    background-color: rgba(220, 0, 0, 0.15);
-    border-color: rgba(220, 0, 0, 0.5);
+.fp-interactive-area:hover .fp-interactive-tooltip {
+    opacity: 1;
+    visibility: visible;
 }
 
-.fp-interactive-area.fp-page-jump-area {
-    background-color: rgba(0, 180, 0, 0.05);
-    border: 1px dashed rgba(0, 180, 0, 0.3);
+/* Área de InDesign (puede heredar o tener estilos propios) */
+.fp-indesign-area {
+    /* Hereda estilos de .fp-interactive-area */
 }
 
-.fp-interactive-area.fp-page-jump-area:hover {
-    background-color: rgba(0, 180, 0, 0.15);
-    border-color: rgba(0, 0, 0, 0.5);
-}
-
-/* Estilo específico para diferentes tipos de áreas */
-.fp-url-area {
-    background-color: rgba(30, 144, 255, 0.05);
-    border: 1px dashed rgba(30, 144, 255, 0.3);
-}
-
-.fp-url-area:hover {
-    background-color: rgba(30, 144, 255, 0.15);
-    border-color: rgba(30, 144, 255, 0.5);
-}
-
+/* Tipos específicos de áreas */
 .fp-youtube-area {
-    background-color: rgba(220, 0, 0, 0.05);
-    border: 1px dashed rgba(220, 0, 0, 0.3);
+    background-color: rgba(220, 53, 69, 0.1);
 }
 
-.fp-youtube-area:hover {
-    background-color: rgba(220, 0, 0, 0.15);
-    border-color: rgba(220, 0, 0, 0.5);
-}
-
-.fp-page-area {
-    background-color: rgba(0, 180, 0, 0.05);
-    border: 1px dashed rgba(0, 180, 0, 0.3);
-}
-
-.fp-page-area:hover {
-    background-color: rgba(0, 180, 0, 0.15);
-    border-color: rgba(0, 180, 0, 0.5);
-}
-
-/* Iconos para los diferentes tipos de áreas */
-.fp-area-icon {
+.fp-youtube-area::after {
+    content: "▶";
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 24px;
-    height: 24px;
-    background-color: rgba(255, 255, 255, 0.8);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
+    color: rgba(220, 53, 69, 0.7);
+    font-size: 18px;
 }
 
-.fp-youtube-icon::before {
-    content: "▶";
-    color: #cc0000;
+.fp-page-jump-area {
+    background-color: rgba(13, 110, 253, 0.1);
+    border-color: rgba(13, 110, 253, 0.3);
 }
 
-.fp-page-jump-icon::before {
-    content: "↪";
-    color: #008800;
+.fp-page-jump-area:hover {
+    background-color: rgba(13, 110, 253, 0.2);
+    border-color: rgba(13, 110, 253, 0.5);
 }
 
-/* Icono de área de audio */
 .fp-audio-area {
-    position: relative;
+    background-color: rgba(25, 135, 84, 0.1);
+    border-color: rgba(25, 135, 84, 0.3);
+}
+
+.fp-audio-area:hover {
+    background-color: rgba(25, 135, 84, 0.2);
+    border-color: rgba(25, 135, 84, 0.5);
 }
 
 .fp-audio-icon {
@@ -505,136 +327,81 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 25px;
-    height: 25px;
-    background-color: var(--fp-accent-color);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    transition: transform 0.2s, background-color 0.2s;
-}
-
-.fp-audio-icon::before {
-    content: '';
-    display: block;
-    width: 12px;
-    height: 12px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 448 512'%3E%3Cpath fill='white' d='M320 64c0-12.2-6.7-23.5-17.3-29.1s-23.8-5.2-33.9 2L69.8 132.7C45.1 148.5 32 175.5 32 204v104c0 28.5 13.1 55.5 37.8 71.3l199 95.8c10.2 7.2 23.4 7.7 33.9 2s17.3-16.9 17.3-29.1V64zM352 400.2c0 12.1 6.8 23.2 17.7 28.6s23.8 4.8 33.9-2.3l17.8-12.6c8.8-6.2 14-16.2 14-27.1V226.8c0-10.8-5.2-20.9-14-27.1l-17.8-12.6c-10-7.1-23-7.8-33.9-2.3s-17.7 16.6-17.7 28.6V400.2z'/%3E%3C/svg%3E");
+    width: 20px;
+    height: 20px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23198754' d='M11.536 14.01A8.473 8.473 0 0 0 14.026 8a8.473 8.473 0 0 0-2.49-6.01l-.708.707A7.476 7.476 0 0 1 13.025 8c0 2.071-.84 3.946-2.197 5.303l.708.707z'/%3E%3Cpath fill='%23198754' d='M10.121 12.596A6.48 6.48 0 0 0 12.025 8a6.48 6.48 0 0 0-1.904-4.596l-.707.707A5.483 5.483 0 0 1 11.025 8a5.483 5.483 0 0 1-1.61 3.89l.706.706z'/%3E%3Cpath fill='%23198754' d='M8.707 11.182A4.486 4.486 0 0 0 10.025 8a4.486 4.486 0 0 0-1.318-3.182L8 5.525A3.489 3.489 0 0 1 9.025 8 3.49 3.49 0 0 1 8 10.475l.707.707zM6.717 3.55A.5.5 0 0 1 7 4v8a.5.5 0 0 1-.812.39L3.825 10.5H1.5A.5.5 0 0 1 1 10V6a.5.5 0 0 1 .5-.5h2.325l2.363-1.89a.5.5 0 0 1 .529-.06z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: center;
+    opacity: 0.7;
 }
 
-.fp-audio-icon:hover {
-    transform: translate(-50%, -50%) scale(1.2);
-    background-color: #f23545;
-}
-
-.fp-audio-area.playing .fp-audio-icon::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 512'%3E%3Cpath fill='white' d='M48 64C21.5 64 0 85.5 0 112V400c0 26.5 21.5 48 48 48H80c26.5 0 48-21.5 48-48V112c0-26.5-21.5-48-48-48H48zm192 0c-26.5 0-48 21.5-48 48V400c0 26.5 21.5 48 48 48h32c26.5 0 48-21.5 48-48V112c0-26.5-21.5-48-48-48H240z'/%3E%3C/svg%3E");
-}
-
-/* Tooltip para áreas interactivas */
-.fp-interactive-tooltip {
+/* Reproductor de audio */
+.fp-audio-player {
     position: absolute;
-    top: -30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.2s;
+    bottom: -40px; /* Oculto por defecto */
+    left: 0;
+    right: 0;
+    height: 40px;
+    background-color: var(--fp-bg-color); /* Asegurar que use variable */
+    border-top: 1px solid var(--fp-border-color); /* Asegurar que use variable */
+    transition: bottom 0.3s ease, background-color 0.3s, border-color 0.3s; /* Añadir transición */
     z-index: 100;
+    display: none; /* Oculto hasta que sea necesario */
 }
 
-.fp-interactive-tooltip::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+.fp-audio-player.visible {
+    bottom: 0;
+    display: block;
 }
 
-.fp-interactive-area:hover .fp-interactive-tooltip {
-    opacity: 1;
-}
-
-/* Popup para videos y contenido */
-.fp-popup-overlay {
+/* Fullscreen mode */
+.flipbook-container.fullscreen-active {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.fp-popup {
-    background-color: white;
-    border-radius: 5px;
-    max-width: 800px;
-    width: 90%;
-    max-height: 90vh;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-
-.fp-popup-header {
-    padding: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #ddd;
-}
-
-.fp-popup-header h3 {
+    width: 100vw;
+    height: 100vh;
+    z-index: 99999;
     margin: 0;
     padding: 0;
-    font-size: 18px;
-    color: #333;
+    border-radius: 0;
 }
 
-
-
-.fp-popup-close {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    color: #777;
+.fullscreen-active .fp-pdf-viewer {
+    height: calc(100vh - 60px); /* Altura total menos altura de controles */
 }
 
-.fp-popup-close:hover {
-    color: #333;
+/* Integraciones con SweetAlert2 */
+.fp-swal-container {
+    z-index: 10000;
 }
 
-.fp-popup-body {
+.fp-swal-popup {
+    background: var(--fp-bg-color); /* Usar variable para modo oscuro/claro */
+    color: var(--fp-text-color);
     padding: 0;
-    overflow: auto;
-    flex-grow: 1;
+    border-radius: 8px;
 }
 
+.fp-swal-header {
+    border-bottom: 1px solid var(--fp-border-color); /* Usar variable */
+}
+
+.fp-swal-close-button {
+    color: var(--fp-text-color) !important; /* Usar variable */
+}
+
+.fp-swal-content {
+    padding: 0;
+}
+
+/* Contenedor de video para popups */
 .fp-video-container {
     position: relative;
-    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 */
     height: 0;
-    padding-bottom: 56.25%;
     overflow: hidden;
+    max-width: 100%;
 }
 
 .fp-video-container iframe {
@@ -643,115 +410,140 @@
     left: 0;
     width: 100%;
     height: 100%;
-    border: 0;
+    border: none;
 }
 
-/* Selector de color de fondo */
-.fp-background-picker {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 100;
+/* Popup Fallback (cuando SweetAlert2 no está disponible) */
+.fp-popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.8);
     display: flex;
-    gap: 5px;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.fp-popup {
+    width: 80%;
+    max-width: 900px;
+    background-color: var(--fp-bg-color); /* Usar variable */
+    color: var(--fp-text-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.fp-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: rgba(128, 128, 128, 0.1); /* Fondo semi-transparente genérico */
+}
+.dark-mode .fp-popup-header {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.fp-popup-header h3 {
+    margin: 0;
+    color: var(--fp-text-color); /* Usar variable */
+    font-size: 18px;
+}
+
+.fp-popup-close {
+    background: transparent;
+    border: none;
+    color: var(--fp-text-color); /* Usar variable */
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.fp-popup-body {
+    padding: 0;
+}
+
+/* Selector de tema */
+.fp-background-options {
+    display: flex;
+    gap: 10px;
 }
 
 .fp-background-option {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     cursor: pointer;
-    border: 2px solid transparent;
     transition: transform 0.2s;
 }
 
+.fp-background-option:hover {
+    transform: scale(1.1);
+}
+
 .fp-background-option.active {
-    border-color: white;
-    transform: scale(1.2);
-    box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    box-shadow: 0 0 0 2px var(--fp-accent-color);
 }
 
-.fp-background-light {
-    background-color: #f0f0f0;
+.fp-light-theme {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
 }
 
-
-/* --- Responsividad --- */
-@media (max-width: 992px) {
-    .fp-pages-container {
-        width: 95%;
-        height: 95%;
-    }
+.fp-dark-theme {
+    background-color: #333;
+    border: 1px solid #666;
 }
 
-@media (max-width: 768px) {
-    :root {
-        --fp-toolbar-height: auto;
-        --fp-arrow-size: 35px;
+/* Responsive en pantallas pequeñas */
+@media (max-width: 576px) {
+    .fp-controls {
+        flex-direction: column;
+        gap: 10px;
     }
-
-    .flipbook-container {
-        height: 75vh;
-        min-height: 400px;
-    }
-
-    .fp-toolbar {
-        padding: 8px 10px;
-        justify-content: center;
-        gap: 8px;
-    }
-
-    .fp-arrow-left {
-        left: 5px;
-    }
-
-    .fp-arrow-right {
-        right: 5px;
-    }
-
-    .fp-zoom-slider {
-        width: 80px;
-    }
-
-    .fp-audio-container {
-        margin-left: 0;
-        order: 5;
+    
+    .fp-nav-controls,
+    .fp-zoom-controls,
+    .fp-option-controls {
         width: 100%;
-        text-align: center;
-    }
-
-    .fp-audio-player {
-        max-width: 90%;
+        justify-content: space-between;
     }
 }
 
-@media (max-width: 480px) {
-    .fp-toolbar-group {
-        gap: 3px;
-    }
+/* Estilos para soportar Turn.js */
+.turn-page {
+    /* Mantener como está - Turn.js maneja internamente los estilos */
+}
 
-    .fp-tool-btn {
-        font-size: 16px;
-        padding: 5px 6px;
-    }
+/* Animaciones */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
 
-    .fp-zoom-slider {
-        width: 70px;
-    }
+.fp-loading {
+    animation: pulse 1.5s infinite;
+}
 
-    .fp-page-input {
-        width: 40px;
-    }
+/* Estilos para Plyr (reproductor de audio/video) */
+.plyr--audio .plyr__controls {
+    background-color: var(--fp-bg-color) !important;
+    color: var(--fp-text-color) !important;
+    border-top: 1px solid var(--fp-border-color); /* Añadir borde consistente */
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
 
-    .fp-page-indicator {
-        font-size: 12px;
-    }
+.plyr--audio .plyr__control[aria-pressed=true] {
+    background-color: var(--fp-accent-color) !important;
+}
 
-    :root {
-        --fp-arrow-size: 30px;
-    }
+.plyr--audio .plyr__control:hover {
+    background-color: rgba(228, 37, 53, 0.8) !important;
+}
 
-    .flipbook-container {
-        height: 70vh;
-    }
+.plyr--audio .plyr__control:focus {
+    outline-color: var(--fp-accent-color) !important;
 }
