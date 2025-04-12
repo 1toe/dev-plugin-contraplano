@@ -1446,22 +1446,9 @@ function fp_flipbook_shortcode($atts)
         'ajaxurl' => admin_url('admin-ajax.php')
     ));
 
-    // Determinar clase de tema según configuración
-    $theme_class = '';
-    if ($theme_mode === 'dark') {
-        $theme_class = 'dark-mode';
-    } elseif ($theme_mode === 'user_choice') {
-        $theme_class = 'user-choice-theme';
-    }
-
-    // CSS inline para el color de acento
-    $accent_color_css = '
-    <style>
-        #' . esc_attr($container_id) . ' {
-            --fp-accent-color: ' . esc_attr($accent_color) . ';
-        }
-    </style>
-    ';
+    // Ensure required variables are defined
+    $accent_color_css = isset($accent_color) ? '<style>.flipbook-container { accent-color: ' . esc_attr($accent_color) . '; }</style>' : '';
+    $theme_class = isset($theme_mode) ? 'theme-' . esc_attr($theme_mode) : 'theme-light';
 
     // Generar HTML para el flipbook
     $output = $accent_color_css . '
@@ -1469,44 +1456,6 @@ function fp_flipbook_shortcode($atts)
          data-pdf="' . esc_url($pdf_url) . '" 
          data-view-mode="' . esc_attr($atts['view_mode']) . '" 
          style="width: ' . esc_attr($atts['width']) . '; height: ' . esc_attr($atts['height']) . ';">
-        
-        <!-- Selector de fondo si es user_choice -->
-        ' . ($theme_mode === 'user_choice' ? '<div class="fp-background-picker">
-            <div class="fp-background-option fp-background-light active" data-theme="light"></div>
-            <div class="fp-background-option fp-background-dark" data-theme="dark"></div>
-        </div>' : '') . '
-        
-        <!-- Toolbar / Controles -->
-        <div class="fp-toolbar">
-            <div class="fp-toolbar-group fp-nav-btns">
-                <button type="button" class="fp-tool-btn fp-zoom-out" title="Reducir">
-                    <i class="dashicons dashicons-minus"></i>
-                </button>
-                <input type="range" class="fp-zoom-slider" min="0.5" max="3" step="0.1" value="1">
-                <button type="button" class="fp-tool-btn fp-zoom-in" title="Ampliar">
-                    <i class="dashicons dashicons-plus"></i>
-                </button>
-            </div>
-            
-            <div class="fp-toolbar-group fp-page-nav">
-                <div class="fp-page-input-container">
-                    <input type="number" class="fp-page-input" min="1" value="1">
-                    <span class="fp-page-indicator">/ <span class="fp-total-pages">0</span></span>
-                </div>
-                <button type="button" class="fp-tool-btn fp-goto-page" title="Ir a página">
-                    <i class="dashicons dashicons-arrow-right-alt"></i>
-                </button>
-            </div>
-            
-            <div class="fp-toolbar-group fp-view-btns">
-                <button type="button" class="fp-tool-btn fp-view-toggle" title="Cambiar vista">
-                    <i class="dashicons dashicons-book-alt"></i>
-                </button>
-                <button type="button" class="fp-tool-btn fp-fullscreen" title="Pantalla completa">
-                    <i class="dashicons dashicons-fullscreen-alt"></i>
-                </button>
-            </div>
-        </div>
         
         <!-- Área del visor -->
         <div class="fp-viewer-area">
