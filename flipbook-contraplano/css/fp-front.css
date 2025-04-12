@@ -410,7 +410,7 @@
     border: 1px dashed rgba(0, 0, 0, 0.2);
     cursor: pointer;
     z-index: 50;
-    transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .fp-interactive-area:hover {
@@ -436,6 +436,63 @@
 .fp-interactive-area.fp-page-jump-area:hover {
     background-color: rgba(0, 180, 0, 0.15);
     border-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Estilo específico para diferentes tipos de áreas */
+.fp-url-area {
+    background-color: rgba(30, 144, 255, 0.05);
+    border: 1px dashed rgba(30, 144, 255, 0.3);
+}
+
+.fp-url-area:hover {
+    background-color: rgba(30, 144, 255, 0.15);
+    border-color: rgba(30, 144, 255, 0.5);
+}
+
+.fp-youtube-area {
+    background-color: rgba(220, 0, 0, 0.05);
+    border: 1px dashed rgba(220, 0, 0, 0.3);
+}
+
+.fp-youtube-area:hover {
+    background-color: rgba(220, 0, 0, 0.15);
+    border-color: rgba(220, 0, 0, 0.5);
+}
+
+.fp-page-area {
+    background-color: rgba(0, 180, 0, 0.05);
+    border: 1px dashed rgba(0, 180, 0, 0.3);
+}
+
+.fp-page-area:hover {
+    background-color: rgba(0, 180, 0, 0.15);
+    border-color: rgba(0, 180, 0, 0.5);
+}
+
+/* Iconos para los diferentes tipos de áreas */
+.fp-area-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 24px;
+    height: 24px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.fp-youtube-icon::before {
+    content: "▶";
+    color: #cc0000;
+}
+
+.fp-page-jump-icon::before {
+    content: "↪";
+    color: #008800;
 }
 
 /* Icono de área de audio */

@@ -37,6 +37,10 @@ function fp_meta_callback($post)
     wp_nonce_field('fp_save_meta_data', 'fp_meta_nonce');
     $pdf = get_post_meta($post->ID, 'fp_pdf', true);
     $audios = get_post_meta($post->ID, 'fp_audios', true) ?: [];
+    $interactive_areas = get_post_meta($post->ID, 'fp_interactive_areas', true) ?: '';
+    
+    // Convertir array de áreas a JSON para el campo de texto
+    $interactive_areas_json = is_array($interactive_areas) ? wp_json_encode($interactive_areas, JSON_PRETTY_PRINT) : $interactive_areas;
 ?>
     <p>
         <label for="fp_pdf">PDF del Flipbook:</label><br>
@@ -57,6 +61,44 @@ function fp_meta_callback($post)
         <?php endforeach; ?>
     </div>
     <button type="button" class="button" id="add_audio_button">+ Agregar Audio</button>
+
+    <hr>
+    <p><strong>Áreas Interactivas:</strong></p>
+    <p>
+        <textarea name="fp_interactive_areas" id="fp_interactive_areas" style="width:100%; height:200px;" placeholder='[
+  {
+    "page": 1,
+    "x": 100,
+    "y": 200,
+    "width": 200,
+    "height": 100,
+    "type": "url",
+    "url": "https://ejemplo.com",
+    "tooltip": "Visitar sitio web"
+  },
+  {
+    "page": 2,
+    "x": 150,
+    "y": 300,
+    "width": 250,
+    "height": 150,
+    "type": "youtube",
+    "youtube_url": "https://youtu.be/abc123",
+    "tooltip": "Ver video"
+  },
+  {
+    "page": 3,
+    "x": 200,
+    "y": 400,
+    "width": 150,
+    "height": 100,
+    "type": "page",
+    "target_page": 5,
+    "tooltip": "Ir a página 5"
+  }
+]'><?php echo esc_textarea($interactive_areas_json); ?></textarea>
+    </p>
+    <p class="description">Ingresa las áreas interactivas en formato JSON. Cada área debe tener: page, x, y, width, height, type, y propiedades específicas según el tipo.</p>
 
     <script type="text/javascript">
         jQuery(document).ready(function($) {
@@ -124,8 +166,26 @@ function fp_save_meta($post_id)
 
     update_post_meta($post_id, 'fp_pdf', sanitize_url($_POST['fp_pdf'] ?? ''));
     update_post_meta($post_id, 'fp_audios', array_map('sanitize_url', $_POST['fp_audios'] ?? []));
+
+    // Guardar áreas interactivas
+    $interactive_areas = '';
+    if (isset($_POST['fp_interactive_areas'])) {
+        $interactive_areas = wp_unslash($_POST['fp_interactive_areas']);
+        
+        // Intentar decodificar el JSON y validar
+        $decoded = json_decode($interactive_areas, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            // JSON válido, guardar como array
+            update_post_meta($post_id, 'fp_interactive_areas', $decoded);
+        } else {
+            // JSON inválido, guardar como string y mostrar error
+            update_post_meta($post_id, 'fp_interactive_areas', $interactive_areas);
+            add_action('admin_notices', function() {
+                echo '<div class="error"><p>El formato JSON de las áreas interactivas no es válido. Por favor, revise la sintaxis.</p></div>';
+            });
+        }
+    }
 }
-add_action('save_post_flipbook', 'fp_save_meta');
 
 // Shortcode para visualizar el Flipbook
 function fp_flipbook_shortcode($atts)
@@ -135,23 +195,27 @@ function fp_flipbook_shortcode($atts)
     if (!$post_id || get_post_type($post_id) !== 'flipbook') return '<p>Error: Flipbook no encontrado.</p>';
 
     $pdf = get_post_meta($post_id, 'fp_pdf', true);
-    // $audios = get_post_meta($post_id, 'fp_audios', true) ?: []; // Audios hidden for ISSUU style
+    $audios = get_post_meta($post_id, 'fp_audios', true) ?: [];
+    $interactive_areas = get_post_meta($post_id, 'fp_interactive_areas', true) ?: [];
+    
     if (empty($pdf)) return '<p>Error: No se ha configurado un PDF para este Flipbook.</p>';
 
     // Registrar y encolar estilos y scripts
-    wp_register_style('fp-style', plugins_url('css/fp-front.css', __FILE__), [], '1.2.0'); // Version bump
+    wp_register_style('fp-style', plugins_url('css/fp-front.css', __FILE__), [], '1.2.1');
     wp_enqueue_style('fp-style');
-    wp_enqueue_script('fp-custom-zoom'); // Enqueue the custom zoom script
-    wp_enqueue_script('fp-custom-zoom', plugins_url('js/fp-custom-zoom.js', __FILE__), array('jquery'), '1.0.0', true);
+    wp_enqueue_script('fp-custom-zoom', plugins_url('js/fp-custom-zoom.js', __FILE__), array('jquery'), '1.0.1', true);
     wp_enqueue_script('pdfjs', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js', [], null, true);
-    wp_register_script('fp-front', plugins_url('js/fp-front.js', __FILE__), ['jquery', 'pdfjs'], '1.2.0', true); // Version bump
+    wp_register_script('fp-front', plugins_url('js/fp-front.js', __FILE__), ['jquery', 'pdfjs'], '1.2.1', true);
     wp_enqueue_script('fp-front');
 
-    // Pass only necessary data
+    // Pasar todos los datos necesarios
     wp_localize_script('fp-front', 'fpConfig', [
         'pdfWorkerSrc' => 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js',
-        'postId' => $post_id
-        // 'audios' => $audios // Don't pass audios
+        'postId' => $post_id,
+        'audios' => $audios,
+        'interactiveAreas' => is_array($interactive_areas) ? $interactive_areas : [],
+        'startWithDoublePage' => false, // Configurable por opciones
+        'debug' => WP_DEBUG
     ]);
 
     ob_start();

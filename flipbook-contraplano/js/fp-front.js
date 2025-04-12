@@ -451,51 +451,53 @@ jQuery(document).ready(function ($) {
             // Eliminar áreas anteriores
             $('.fp-interactive-area').remove();
 
-            if (!interactiveAreas || interactiveAreas.length === 0) return;
+            // Verificar si existen áreas interactivas configuradas
+            if (!interactiveAreas || !Array.isArray(interactiveAreas) || interactiveAreas.length === 0) {
+                console.log('No se encontraron áreas interactivas configuradas');
+                return;
+            }
 
             // Crear áreas para la página actual
             interactiveAreas.forEach((area, index) => {
+                if (!area || !area.page) {
+                    console.warn('Área interactiva con formato incorrecto:', area);
+                    return;
+                }
+                
                 const areaPage = parseInt(area.page, 10);
+                if (isNaN(areaPage)) {
+                    console.warn('Número de página inválido en área:', area);
+                    return;
+                }
+                
                 if (isCurrentlyVisiblePage(areaPage)) {
                     createInteractiveArea(area, index);
                 }
             });
 
-            // Vincular acciones de eventos
-            $('.fp-interactive-area').on('click', handleAreaClick);
-        }
-
-        // Verificar si una página está visible actualmente
-        function isCurrentlyVisiblePage(pageNum) {
-            if (viewMode === 'single') {
-                return pageNum === currentPageNum;
-            } else {
-                // En modo doble, pueden ser visibles dos páginas
-                const isEven = currentPageNum % 2 === 0;
-                const leftPage = isEven ? currentPageNum - 1 : currentPageNum;
-                const rightPage = leftPage + 1;
-
-                // Casos especiales: primera página sola, última página sola
-                if (leftPage === 1 && fpConfig.startWithDoublePage !== true) {
-                    return pageNum === 1;
-                }
-
-                if (rightPage > totalPagesCount && totalPagesCount % 2 !== 0) {
-                    return pageNum === totalPagesCount;
-                }
-
-                return pageNum === leftPage || pageNum === rightPage;
-            }
+            // Vincular acciones de eventos - aseguramos que se aplique a todas las áreas
+            $('.fp-interactive-area').off('click').on('click', handleAreaClick);
         }
 
         // Crear área interactiva en la página
         function createInteractiveArea(area, index) {
+            // Validar propiedades requeridas
+            if (!area || !area.x || !area.y || !area.width || !area.height) {
+                console.warn('Área interactiva con propiedades incompletas:', area);
+                return;
+            }
+
             const x = parseFloat(area.x);
             const y = parseFloat(area.y);
             const width = parseFloat(area.width);
             const height = parseFloat(area.height);
             const areaPage = parseInt(area.page, 10);
             const tooltip = area.tooltip || '';
+            
+            if (isNaN(x) || isNaN(y) || isNaN(width) || isNaN(height) || isNaN(areaPage)) {
+                console.warn('Valores numéricos inválidos en área:', area);
+                return;
+            }
 
             // Encontrar el elemento de página correspondiente
             let $targetPage;
@@ -548,18 +550,24 @@ jQuery(document).ready(function ($) {
                 $area.append(`<span class="fp-interactive-tooltip">${tooltip}</span>`);
             }
 
-            // Clases específicas según tipo
-            if (area.type === 'youtube') {
-                $area.addClass('fp-youtube-area');
-            } else if (area.type === 'page') {
-                $area.addClass('fp-page-jump-area');
-            } else if (area.type === 'audio') {
-                $area.addClass('fp-audio-area');
+            // Añadir clases específicas según tipo con mejor detección
+            const areaType = area.type || 'url';
+            $area.addClass(`fp-${areaType}-area`);
+            
+            // Mostrar visualmente el tipo de área para mejor depuración
+            if (areaType === 'youtube') {
+                $area.append('<div class="fp-area-icon fp-youtube-icon"></div>');
+            } else if (areaType === 'page') {
+                $area.append('<div class="fp-area-icon fp-page-jump-icon"></div>');
+            } else if (areaType === 'audio') {
                 $area.append('<div class="fp-audio-icon"></div>');
             }
 
             // Añadir al DOM
             $targetPage.append($area);
+            
+            // Log de depuración
+            console.log(`Área interactiva creada: Tipo=${areaType}, Página=${areaPage}, Coordenadas=(${x},${y}), Tamaño=${width}x${height}`);
         }
 
         // Manejar clic en área interactiva
@@ -569,7 +577,13 @@ jQuery(document).ready(function ($) {
             const areaIndex = $area.data('area-index');
             const areaType = $area.data('area-type');
 
-            if (!interactiveAreas || !interactiveAreas[areaIndex]) return;
+            // Log para depuración
+            console.log(`Clic en área: Índice=${areaIndex}, Tipo=${areaType}`);
+
+            if (!interactiveAreas || !interactiveAreas[areaIndex]) {
+                console.warn('No se encontró la definición del área interactiva', areaIndex);
+                return;
+            }
 
             const area = interactiveAreas[areaIndex];
 
