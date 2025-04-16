@@ -22,6 +22,7 @@
             this.setupAreasEditor();
             this.setupAreasList();
             this.setupThemeColorPicker();
+            this.setupInDesignImport();
         },
 
         // Configurar tabs 
@@ -363,10 +364,12 @@
                 }
             }
 
+            // --- INICIO CÓDIGO A INSERTAR ---
             // Asegurar que los campos correctos se muestren al abrir/cargar el popup
             var currentPopupType = $('#popup_type').val();
             $('.fp-youtube-url-field').toggle(currentPopupType === 'youtube');
             $('.fp-page-jump-field').toggle(currentPopupType === 'page');
+            // --- FIN CÓDIGO A INSERTAR ---
 
             // Mostrar (esta línea ya existe, la nueva lógica va antes)
             this.showAreaFormAtPosition(formLeft, formTop);
@@ -563,18 +566,10 @@
                     $('#fp_interactive_container').html('<div class="no-areas-message">No hay áreas interactivas definidas. Haga clic en "Agregar Área Interactiva" para comenzar.</div>');
                 }
 
-                // Actualizar títulos e índices
+                // Actualizar títulos
                 $('#fp_interactive_container .fp-interactive-area-row').each(function (idx) {
                     $(this).find('h4').text('Área #' + (idx + 1) + ' (Página ' + $(this).find('input[name^="fp_areas"][name$="[page]"]').val() + ')');
-                    $(this).attr('data-area-index', idx); // Actualizar el índice del atributo data
-                    // Actualizar los nombres de los campos para reflejar el nuevo índice
-                    $(this).find('input, select').each(function() {
-                        var name = $(this).attr('name');
-                        if (name) {
-                            $(this).attr('name', name.replace(/\[\d+\]/, '[' + idx + ']'));
-                        }
-                    });
-                    // Actualizar el índice en el botón de editar visualmente
+                    $(this).attr('data-area-index', idx);
                     $(this).find('.edit-area-visually').attr('data-area-index', idx);
                 });
             });
@@ -657,7 +652,7 @@
         },
 
         // Configuración del selector de color de tema
-        setupThemeColorPicker: function() {
+        setupThemeColorPicker: function () {
             // Añadir selector de color si no existe
             if (!$('#fp_theme_color_picker').length) {
                 var colorPicker = `
@@ -694,29 +689,206 @@
                         <input type="hidden" id="fp_accent_color" name="fp_accent_color" value="#e42535">
                     </div>
                 `;
-                
+
                 // Insertar después de la sección de PDF
                 $('.pdf-upload-section').after(colorPicker);
-                
+
                 // Inicializar con valor guardado si existe
                 var savedTheme = $('input[name="fp_theme_mode"]:radio').filter('[value="' + $('#fp_theme_mode').val() + '"]');
                 if (savedTheme.length) {
                     savedTheme.prop('checked', true);
                 }
-                
+
                 if ($('#fp_accent_color').val()) {
                     $('input[name="fp_accent_color"]').val($('#fp_accent_color').val());
                 }
-                
+
                 // Actualizar campo oculto al cambiar la selección
-                $('input[name="fp_theme_mode"]:radio').on('change', function() {
+                $('input[name="fp_theme_mode"]:radio').on('change', function () {
                     $('#fp_theme_mode').val($(this).val());
                 });
-                
-                $('input[name="fp_accent_color"]').on('change', function() {
+
+                $('input[name="fp_accent_color"]').on('change', function () {
                     $('#fp_accent_color').val($(this).val());
                 });
             }
+        },
+
+        // Configurar importación de datos de InDesign
+        setupInDesignImport: function () {
+            $('#fp_import_indesign').on('click', function () {
+                var fileInput = $('#fp_indesign_json')[0];
+
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    alert('Por favor, seleccione un archivo JSON de InDesign para importar.');
+                    return;
+                }
+
+                var file = fileInput.files[0];
+                var reader = new FileReader();
+
+                reader.onload = function (e) {
+                    try {
+                        var jsonData = JSON.parse(e.target.result);
+
+                        // Procesar datos de InDesign
+                        var processedData = FlipbookAdmin.processInDesignData(jsonData);
+
+                        // Actualizar la tabla de acciones
+                        FlipbookAdmin.updateInDesignActionsList(processedData);
+
+                        // Actualizar el campo oculto con los datos procesados
+                        $('#fp_indesign_data').val(JSON.stringify(processedData));
+
+                        alert('Datos de InDesign importados correctamente.');
+                    } catch (error) {
+                        console.error('Error al procesar el archivo JSON:', error);
+                        alert('Error al procesar el archivo. Asegúrese de que es un JSON válido.');
+                    }
+                };
+
+                reader.readAsText(file);
+            });
+
+            // Eliminar acción de InDesign
+            $('.fp-indesign-list').on('click', '.remove-indesign-action', function () {
+                var index = $(this).data('index');
+                var indesignData = JSON.parse($('#fp_indesign_data').val() || '[]');
+
+                // Eliminar la acción del array
+                indesignData.splice(index, 1);
+
+                // Actualizar el campo oculto y la lista
+                $('#fp_indesign_data').val(JSON.stringify(indesignData));
+                FlipbookAdmin.updateInDesignActionsList(indesignData);
+            });
+        },
+
+        // Procesar datos JSON de InDesign
+        processInDesignData: function (jsonData) {
+            var processedData = [];
+
+            // Verificar la estructura del JSON (puede variar según la exportación de InDesign)
+            if (jsonData.hyperlinks && Array.isArray(jsonData.hyperlinks)) {
+                // Ejemplo de estructura: Array de hyperlinks con source y destination
+                jsonData.hyperlinks.forEach(function (hyperlink, index) {
+                    if (hyperlink.source && hyperlink.destination) {
+                        var action = {
+                            id: 'indesign_' + index,
+                            sourcePage: hyperlink.source.page || 1,
+                            x: hyperlink.source.x || 0,
+                            y: hyperlink.source.y || 0,
+                            width: hyperlink.source.width || 100,
+                            height: hyperlink.source.height || 30
+                        };
+
+                        // Determinar tipo de destino
+                        if (hyperlink.destination.type === 'page') {
+                            action.type = 'goto';
+                            action.targetPage = hyperlink.destination.page || 1;
+                        } else if (hyperlink.destination.type === 'url') {
+                            action.type = 'url';
+                            action.url = hyperlink.destination.url || '#';
+                            action.openInNewTab = hyperlink.destination.newWindow || false;
+                        }
+
+                        processedData.push(action);
+                    }
+                });
+            } else if (jsonData.actions && Array.isArray(jsonData.actions)) {
+                // Estructura alternativa: Array of actions
+                jsonData.actions.forEach(function (action, index) {
+                    var newAction = {
+                        id: 'indesign_' + index,
+                        sourcePage: action.page || 1,
+                        x: action.bounds ? action.bounds.x || 0 : 0,
+                        y: action.bounds ? action.bounds.y || 0 : 0,
+                        width: action.bounds ? action.bounds.width || 100 : 100,
+                        height: action.bounds ? action.bounds.height || 30 : 30
+                    };
+
+                    if (action.actionType === 'goToPage') {
+                        newAction.type = 'goto';
+                        newAction.targetPage = action.targetPage || 1;
+                    } else if (action.actionType === 'goToURL') {
+                        newAction.type = 'url';
+                        newAction.url = action.url || '#';
+                        newAction.openInNewTab = action.openInNewWindow || false;
+                    }
+
+                    processedData.push(newAction);
+                });
+            } else {
+                // Intentar procesar formato genérico
+                if (Array.isArray(jsonData)) {
+                    jsonData.forEach(function (item, index) {
+                        var newAction = {
+                            id: 'indesign_' + index,
+                            sourcePage: item.sourcePage || item.page || 1,
+                            x: item.x || 0,
+                            y: item.y || 0,
+                            width: item.width || 100,
+                            height: item.height || 30,
+                            type: item.type || 'goto'
+                        };
+
+                        if (newAction.type === 'goto') {
+                            newAction.targetPage = item.targetPage || 1;
+                        } else if (newAction.type === 'url') {
+                            newAction.url = item.url || '#';
+                            newAction.openInNewTab = item.openInNewTab || false;
+                        }
+
+                        processedData.push(newAction);
+                    });
+                }
+            }
+
+            return processedData;
+        },
+
+        // Actualizar la lista de acciones de InDesign
+        updateInDesignActionsList: function (indesignData) {
+            var $list = $('.fp-indesign-list');
+
+            if (!indesignData || indesignData.length === 0) {
+                $list.html('<p>No hay acciones de InDesign importadas.</p>');
+                return;
+            }
+
+            var tableHtml = '<table class="widefat striped">' +
+                '<thead>' +
+                '<tr>' +
+                '<th>Página Origen</th>' +
+                '<th>Tipo</th>' +
+                '<th>Destino</th>' +
+                '<th>Acciones</th>' +
+                '</tr>' +
+                '</thead>' +
+                '<tbody>';
+
+            indesignData.forEach(function (action, index) {
+                var destination = '';
+
+                if (action.type === 'goto') {
+                    destination = 'Página ' + action.targetPage;
+                } else if (action.type === 'url') {
+                    destination = action.url;
+                }
+
+                tableHtml += '<tr>' +
+                    '<td>' + action.sourcePage + '</td>' +
+                    '<td>' + action.type + '</td>' +
+                    '<td>' + destination + '</td>' +
+                    '<td>' +
+                    '<button type="button" class="button remove-indesign-action" data-index="' + index + '">Eliminar</button>' +
+                    '</td>' +
+                    '</tr>';
+            });
+
+            tableHtml += '</tbody></table>';
+
+            $list.html(tableHtml);
         }
     };
 
@@ -725,4 +897,4 @@
         FlipbookAdmin.init();
     });
 
-})(jQuery);
+})(jQuery); 
