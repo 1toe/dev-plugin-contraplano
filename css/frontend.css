@@ -1,0 +1,282 @@
+/* Estilos para el frontend del plugin Vibebook Flip */
+:root {
+    --fp-container-bg: #f5f5f5;
+    --fp-controls-bg: #0073aa;
+    --fp-controls-color: #fff;
+    --fp-area-url-color: rgba(0, 123, 255, 0.5);
+    --fp-area-youtube-color: rgba(255, 0, 0, 0.5);
+    --fp-area-internal-color: rgba(0, 200, 0, 0.5);
+    --fp-area-audio-color: rgba(255, 193, 7, 0.5);
+}
+
+/* --- Contenedor Principal --- */
+.flipbook-container {
+    position: relative;
+    margin: 20px auto;
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+    background: var(--fp-container-bg);
+    border-radius: 5px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    min-height: 500px;
+    height: 80vh;
+    z-index: 1;
+}
+
+/* Contenedor de páginas */
+.vibebook-pages {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    background-color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.vibebook-pages-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    overflow: auto;
+}
+
+/* Canvas de páginas */
+.vibebook-page {
+    display: block;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Modo de una página */
+.single-page-view .vibebook-page {
+    margin: 0 auto;
+}
+
+/* Modo de dos páginas */
+.double-page-view {
+    justify-content: center;
+}
+
+.double-page-view .vibebook-page-left {
+    margin-right: 1px;
+}
+
+.double-page-view .vibebook-page-right {
+    margin-left: 1px;
+}
+
+/* Controles de navegación */
+.vibebook-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: var(--fp-controls-bg);
+    color: var(--fp-controls-color);
+}
+
+.vibebook-nav-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.vibebook-prev,
+.vibebook-next {
+    background-color: transparent;
+    border: none;
+    color: var(--fp-controls-color);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 5px 10px;
+    transition: background-color 0.3s;
+}
+
+.vibebook-prev:hover,
+.vibebook-next:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Información de página */
+.vibebook-page-info {
+    font-size: 14px;
+}
+
+/* Áreas interactivas */
+.vibebook-area {
+    position: absolute;
+    border: 2px solid transparent;
+    background-color: transparent;
+    transition: background-color 0.3s, border-color 0.3s;
+    z-index: 50;
+}
+
+/* Colores de áreas al pasar el cursor */
+.vibebook-area.url-area:hover {
+    background-color: var(--fp-area-url-color);
+    border-color: rgba(0, 123, 255, 0.8);
+}
+
+.vibebook-area.youtube-area:hover {
+    background-color: var(--fp-area-youtube-color);
+    border-color: rgba(255, 0, 0, 0.8);
+}
+
+.vibebook-area.internal-area:hover {
+    background-color: var(--fp-area-internal-color);
+    border-color: rgba(0, 200, 0, 0.8);
+}
+
+.vibebook-area.audio-area:hover {
+    background-color: var(--fp-area-audio-color);
+    border-color: rgba(255, 193, 7, 0.8);
+}
+
+/* Iconos de áreas */
+.area-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.vibebook-area:hover .area-icon {
+    opacity: 1;
+}
+
+/* Controles de audio */
+.vibebook-audio-controls {
+    display: none;
+    margin-left: 15px;
+}
+
+.vibebook-audio-toggle {
+    background-color: transparent;
+    border: none;
+    color: var(--fp-controls-color);
+    cursor: pointer;
+    padding: 5px;
+}
+
+.vibebook-audio-toggle.playing {
+    color: #ffcc00;
+}
+
+/* Indicador de carga */
+.vibebook-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.vibebook-loading-spinner {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid var(--fp-controls-bg);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Mensaje de error */
+.vibebook-error {
+    padding: 20px;
+    color: #721c24;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 5px;
+}
+
+/* Controles de zoom */
+.vibebook-zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 15px;
+}
+
+.vibebook-zoom-in,
+.vibebook-zoom-out,
+.vibebook-zoom-reset {
+    background-color: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: var(--fp-controls-color);
+    cursor: pointer;
+    font-size: 14px;
+    width: 30px;
+    height: 30px;
+    border-radius: 3px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.3s;
+}
+
+.vibebook-zoom-reset {
+    width: auto;
+    padding: 0 8px;
+    font-size: 12px;
+}
+
+.vibebook-zoom-in:hover,
+.vibebook-zoom-out:hover,
+.vibebook-zoom-reset:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .flipbook-container {
+        height: 70vh;
+    }
+    
+    .vibebook-controls {
+        flex-wrap: wrap;
+    }
+    
+    .vibebook-page-info {
+        order: 3;
+        width: 100%;
+        text-align: center;
+        margin-top: 10px;
+    }
+    
+    .vibebook-zoom-controls {
+        margin-left: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .flipbook-container {
+        height: 60vh;
+    }
+    
+    .double-page-view {
+        flex-direction: column;
+    }
+    
+    .double-page-view .vibebook-page-left,
+    .double-page-view .vibebook-page-right {
+        margin: 5px 0;
+    }
+}
