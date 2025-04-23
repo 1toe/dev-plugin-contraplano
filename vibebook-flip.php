@@ -1,9 +1,11 @@
 <?php
 /**
- * Plugin Name: * VibeBook Flip * 
+ * Plugin Name: -1) FLIYING BOOK 
+ * Plugin URI: https://vibebook.com/
  * Description: Plugin para visualizar PDFs como flipbooks interactivos con áreas interactivas.
  * Version: 1.0.6
- * Author: Matías F, Walter C.
+ * Author: Vibebook
+ * Author URI: https://vibebook.com/
  * Text Domain: vibebook-flip
  * Domain Path: /languages
  */
@@ -48,17 +50,107 @@ class VibeBookFlip {
         add_action('media_buttons', array($this, 'add_media_button'));
         add_action('admin_footer', array($this, 'add_media_button_popup'));
         
-        // Registrar AJAX handlers
+        // Registrar AJAX handlers para usuarios logueados
         add_action('wp_ajax_vibebook_save_flipbook', array($this, 'ajax_save_flipbook'));
         add_action('wp_ajax_vibebook_get_flipbook', array($this, 'ajax_get_flipbook'));
         add_action('wp_ajax_vibebook_save_area', array($this, 'ajax_save_area'));
         add_action('wp_ajax_vibebook_update_area', array($this, 'ajax_update_area'));
         add_action('wp_ajax_vibebook_delete_area', array($this, 'ajax_delete_area'));
         add_action('wp_ajax_vibebook_update_area_position', array($this, 'ajax_update_area_position'));
+        add_action('wp_ajax_vibebook_get_audio_url', array($this, 'ajax_get_audio_url'));
+        
+        // Registrar AJAX handlers para usuarios no logueados (frontend)
+        add_action('wp_ajax_nopriv_vibebook_get_audio_url', array($this, 'ajax_get_audio_url'));
         
         // Manejar acción de eliminación de flipbook
         add_action('admin_post_vibebook_delete_flipbook', array($this, 'handle_delete_flipbook'));
+        
+        // Habilitar depuración AJAX si es necesario
+        $this->enable_ajax_debug();
     }
+
+
+    //ajax//
+    public function enable_ajax_debug() {
+        // Verificar si estamos en un entorno de desarrollo
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            // Configurar manejo de errores para AJAX
+            add_action('wp_ajax_vibebook_save_area', array($this, 'debug_ajax_request'), 1);
+            add_action('wp_ajax_vibebook_update_area', array($this, 'debug_ajax_request'), 1);
+            add_action('wp_ajax_vibebook_delete_area', array($this, 'debug_ajax_request'), 1);
+            add_action('wp_ajax_vibebook_update_area_position', array($this, 'debug_ajax_request'), 1);
+            add_action('wp_ajax_vibebook_get_audio_url', array($this, 'debug_ajax_request'), 1);
+        }
+    }
+    
+    /**
+     * Función para depurar peticiones AJAX
+     */
+    public function debug_ajax_request() {
+        // Registrar información de la petición
+        error_log('AJAX Request: ' . $_REQUEST['action']);
+        error_log('POST Data: ' . print_r($_POST, true));
+        
+        // Verificar nonce manualmente para depuración
+        if (isset($_POST['nonce'])) {
+            $nonce_valid = wp_verify_nonce($_POST['nonce'], 'vibebook_flip_nonce');
+            error_log('Nonce validation: ' . ($nonce_valid ? 'Valid' : 'Invalid'));
+        } else {
+            error_log('Nonce missing in request');
+        }
+    }
+    //fin ajax//
+    //audio 
+    public function ajax_get_audio_url() {
+        // Configurar encabezados para AJAX
+        header('Content-Type: application/json');
+        
+        try {
+            // Verificar nonce
+            if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'vibebook_flip_nonce')) {
+                throw new Exception('Nonce inválido');
+            }
+            
+            // Obtener ID del audio
+            $audio_id = isset($_POST['audio_id']) ? intval($_POST['audio_id']) : 0;
+            
+            // Verificar ID
+            if (!$audio_id) {
+                throw new Exception('ID de audio no válido');
+            }
+            
+            // Obtener URL del archivo de audio
+            $audio_url = wp_get_attachment_url($audio_id);
+            
+            if (!$audio_url) {
+                throw new Exception('Archivo de audio no encontrado');
+            }
+            
+            // Responder con éxito
+            echo json_encode(array(
+                'success' => true,
+                'data' => array(
+                    'url' => $audio_url
+                )
+            ));
+            
+        } catch (Exception $e) {
+            // Registrar error
+            error_log('VibeBook Error: ' . $e->getMessage());
+            
+            // Responder con error
+            echo json_encode(array(
+                'success' => false,
+                'data' => array(
+                    'message' => $e->getMessage()
+                )
+            ));
+        }
+        
+        // Terminar ejecución
+        wp_die();
+    }
+    //fin audio
     
     /**
      * Activación del plugin
@@ -260,6 +352,19 @@ class VibeBookFlip {
         if (!$areas) {
             $areas = array();
         }
+        
+        // Asegurarse de que todas las áreas de audio tengan su URL
+        foreach ($areas as $key => $area) {
+            if ($area['type'] === 'audio' && isset($area['audio_id']) && !isset($area['audio_url'])) {
+                $audio_url = wp_get_attachment_url($area['audio_id']);
+                if ($audio_url) {
+                    $areas[$key]['audio_url'] = $audio_url;
+                }
+            }
+        }
+        
+        // Actualizar áreas con las URLs de audio
+        update_post_meta($post_id, '_vibebook_areas', $areas);
         
         // Incluir datos para JavaScript
         $data = array(
@@ -576,6 +681,15 @@ class VibeBookFlip {
             case 'audio':
                 $area['audio_id'] = isset($_POST['audio_id']) ? intval($_POST['audio_id']) : 0;
                 $area['autoplay'] = isset($_POST['autoplay']) && $_POST['autoplay'] === 'true';
+                
+                // Obtener y guardar la URL del audio directamente
+                $audio_url = wp_get_attachment_url($area['audio_id']);
+                if ($audio_url) {
+                    $area['audio_url'] = $audio_url;
+                } else {
+                    wp_send_json_error('Archivo de audio no encontrado');
+                    return;
+                }
                 break;
         }
         

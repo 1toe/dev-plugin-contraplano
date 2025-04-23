@@ -353,53 +353,53 @@
                     pageInfo = 'Página ' + leftPage + ' de ' + this.totalPages;
                 }
             }
-            
+
             this.container.find('.vibebook-page-info').text(pageInfo);
         },
-        
+
         // Renderizar página
         renderPage: function(pageNum) {
             var self = this;
-            
+
             if (self.pdfRendering) {
                 self.pageNumPending = pageNum;
                 return;
             }
-            
+
             self.pdfRendering = true;
-            
+
             // Actualizar página actual
             self.currentPage = pageNum;
-            
+
             // Determinar modo de visualización
             var mode = self.determineViewMode(pageNum);
-            
+
             // Ajustar layout
             self.adjustLayout(mode);
-            
+
             // Actualizar información de páginas
             self.updatePageInfo();
-            
+
             // Limpiar contenedor
             self.container.find('.vibebook-pages').empty();
-            
+
             // Crear contenedor para la(s) página(s)
             var pagesContainer = $('<div class="vibebook-pages-container"></div>');
             self.container.find('.vibebook-pages').append(pagesContainer);
-            
+
             // Función para renderizar una página individual
             function renderSinglePage(pageNumber, position) {
                 return self.pdfDoc.getPage(pageNumber).then(function(page) {
                     // Crear canvas
                     var canvas = document.createElement('canvas');
                     var context = canvas.getContext('2d');
-                    
+
                     // Calcular escala para ajustar al contenedor
                     var containerWidth = self.container.find('.vibebook-pages').width();
                     var containerHeight = self.container.find('.vibebook-pages').height();
-                    
+
                     var viewport = page.getViewport({ scale: 1 });
-                    
+
                     // Calcular escala según el modo
                     var scale;
                     if (mode === viewMode.SINGLE_PAGE) {
@@ -413,14 +413,14 @@
                         var scaleY = containerHeight / viewport.height;
                         scale = Math.min(scaleX, scaleY) * 0.95;
                     }
-                    
+
                     // Aplicar escala
                     viewport = page.getViewport({ scale: scale });
-                    
+
                     // Ajustar tamaño del canvas
                     canvas.width = viewport.width;
                     canvas.height = viewport.height;
-                    
+
                     // Aplicar clase según posición
                     $(canvas).addClass('vibebook-page');
                     if (position === 'left') {
@@ -432,31 +432,31 @@
                     } else {
                         $(canvas).attr('data-page', pageNumber);
                     }
-                    
+
                     // Guardar dimensiones originales para zoom
                     $(canvas).data('original-width', viewport.width);
                     $(canvas).data('original-height', viewport.height);
-                    
+
                     // Agregar al contenedor
                     pagesContainer.append(canvas);
-                    
+
                     // Renderizar PDF
                     var renderContext = {
                         canvasContext: context,
                         viewport: viewport
                     };
-                    
+
                     return page.render(renderContext).promise;
                 });
             }
-            
+
             // Renderizar según el modo
             if (mode === viewMode.SINGLE_PAGE) {
                 // Renderizar una sola página
                 renderSinglePage(pageNum, 'center').then(function() {
                     self.pdfRendering = false;
                     self.renderAreas();
-                    
+
                     // Procesar página pendiente
                     if (self.pageNumPending !== null) {
                         self.renderPage(self.pageNumPending);
@@ -467,22 +467,22 @@
                 // Renderizar dos páginas
                 var leftPage = pageNum % 2 === 0 ? pageNum : pageNum - 1;
                 var rightPage = pageNum % 2 === 0 ? pageNum + 1 : pageNum;
-                
+
                 // Verificar que las páginas existan
                 if (leftPage < 1) leftPage = 1;
                 if (rightPage > self.totalPages) rightPage = self.totalPages;
-                
+
                 // Renderizar página izquierda
                 var leftPromise = leftPage >= 1 ? renderSinglePage(leftPage, 'left') : Promise.resolve();
-                
+
                 // Renderizar página derecha
                 var rightPromise = rightPage <= self.totalPages ? renderSinglePage(rightPage, 'right') : Promise.resolve();
-                
+
                 // Cuando ambas páginas estén renderizadas
                 Promise.all([leftPromise, rightPromise]).then(function() {
                     self.pdfRendering = false;
                     self.renderAreas();
-                    
+
                     // Procesar página pendiente
                     if (self.pageNumPending !== null) {
                         self.renderPage(self.pageNumPending);
@@ -491,17 +491,17 @@
                 });
             }
         },
-        
+
         // Calcular posición de área según el modo y la página
         calculateAreaPosition: function(area) {
             var position = { left: 0, top: 0, width: 0, height: 0 };
-            
+
             // Obtener coordenadas
             var x = parseFloat(area.coords[0]);
             var y = parseFloat(area.coords[1]);
             var width = parseFloat(area.coords[2]);
             var height = parseFloat(area.coords[3]);
-            
+
             // Calcular porcentajes si no existen
             if (!area.coords_percent) {
                 area.coords_percent = [
@@ -511,16 +511,16 @@
                     (height / this.pdfOriginalHeight) * 100
                 ];
             }
-            
+
             // Obtener porcentajes
             var xPercent = parseFloat(area.coords_percent[0]);
             var yPercent = parseFloat(area.coords_percent[1]);
             var widthPercent = parseFloat(area.coords_percent[2]);
             var heightPercent = parseFloat(area.coords_percent[3]);
-            
+
             // Obtener el canvas de la página correspondiente
             var pageCanvas;
-            
+
             if (this.currentViewMode === viewMode.SINGLE_PAGE) {
                 // En modo de una página, solo hay un canvas
                 pageCanvas = this.container.find('.vibebook-page[data-page="' + area.page + '"]');
@@ -542,43 +542,43 @@
                     }
                 }
             }
-            
+
             // Si no se encuentra el canvas, retornar posición vacía
             if (pageCanvas.length === 0) {
                 return position;
             }
-            
+
             // Calcular posición basada en el canvas
             var canvasWidth = pageCanvas.width();
             var canvasHeight = pageCanvas.height();
             var canvasOffset = pageCanvas.offset();
             var containerOffset = this.container.find('.vibebook-pages').offset();
-            
+
             // Calcular posición relativa al contenedor
             position.width = (widthPercent * canvasWidth) / 100;
             position.height = (heightPercent * canvasHeight) / 100;
-            
+
             // Posición absoluta dentro del canvas
             var absoluteX = (xPercent * canvasWidth) / 100;
             var absoluteY = (yPercent * canvasHeight) / 100;
-            
+
             // Posición relativa al contenedor
             position.left = canvasOffset.left - containerOffset.left + absoluteX;
             position.top = canvasOffset.top - containerOffset.top + absoluteY;
-            
+
             return position;
         },
-        
+
         // Renderizar áreas interactivas
         renderAreas: function() {
             var self = this;
-            
+
             // Limpiar áreas existentes
             self.container.find('.vibebook-area').remove();
-            
+
             // Filtrar áreas para la página actual
             var currentAreas = [];
-            
+
             if (self.currentViewMode === viewMode.SINGLE_PAGE) {
                 // En modo de una página, solo mostrar áreas de la página actual
                 currentAreas = self.areas.filter(function(area) {
@@ -588,23 +588,23 @@
                 // En modo de dos páginas, mostrar áreas de ambas páginas
                 var leftPage = self.currentPage % 2 === 0 ? self.currentPage : self.currentPage - 1;
                 var rightPage = self.currentPage % 2 === 0 ? self.currentPage + 1 : self.currentPage;
-                
+
                 // Verificar que las páginas existan
                 if (leftPage < 1) leftPage = 1;
                 if (rightPage > self.totalPages) rightPage = self.totalPages;
-                
+
                 currentAreas = self.areas.filter(function(area) {
                     return area.page === leftPage || area.page === rightPage;
                 });
             }
-            
+
             // Crear elementos para cada área
             $.each(currentAreas, function(index, area) {
                 var areaDiv = $('<div class="vibebook-area"></div>');
                 areaDiv.attr('data-id', area.id);
                 areaDiv.attr('data-page', area.page);
                 areaDiv.attr('data-type', area.type);
-                
+
                 // Añadir clase según el tipo
                 switch (area.type) {
                     case 'url':
@@ -622,10 +622,10 @@
                         areaDiv.html('<span class="dashicons dashicons-controls-play area-icon"></span>');
                         break;
                 }
-                
+
                 // Calcular posición
                 var position = self.calculateAreaPosition(area);
-                
+
                 // Aplicar posición
                 areaDiv.css({
                     position: 'absolute',
@@ -636,82 +636,117 @@
                     cursor: 'pointer',
                     zIndex: 50
                 });
-                
+
                 // Agregar al contenedor
                 self.container.find('.vibebook-pages').append(areaDiv);
             });
         },
-        
-        // Reproducir audio con autoplay
-        playAutoplayAudio: function() {
-            var self = this;
-            
-            // Filtrar áreas de audio con autoplay para la página actual
-            var autoplayAreas = self.areas.filter(function(area) {
-                return area.page === self.currentPage && area.type === 'audio' && area.autoplay;
-            });
-            
-            // Reproducir el primer audio con autoplay
-            if (autoplayAreas.length > 0) {
-                var area = autoplayAreas[0];
-                if (area.audio_id) {
-                    self.playAudio(area.audio_id);
-                }
-            }
-        },
-        
-        // Reproducir audio
+
+
+
+        // Reproducir audio - FUNCIÓN CORREGIDA
         playAudio: function(audioId) {
             var self = this;
-            
+
             // Detener audio actual
             if (self.currentAudio) {
                 self.currentAudio.pause();
                 self.currentAudio = null;
             }
-            
-            // Buscar URL del audio
-            var audioUrl = '';
-            for (var i = 0; i < self.data.audio_files.length; i++) {
-                if (self.data.audio_files[i].id === audioId) {
-                    audioUrl = self.data.audio_files[i].url;
+
+            // Buscar el área con este audio_id y obtener la URL directamente
+            var audioUrl = null;
+            var audioArea = null;
+
+            for (var i = 0; i < self.areas.length; i++) {
+                if (self.areas[i].type === 'audio' && self.areas[i].audio_id === audioId) {
+                    audioArea = self.areas[i];
+                    if (self.areas[i].audio_url) {
+                        audioUrl = self.areas[i].audio_url;
+                    }
                     break;
                 }
             }
-            
+
             if (audioUrl) {
-                // Crear elemento de audio
+                // Crear elemento de audio con la URL obtenida
                 var audio = new Audio(audioUrl);
-                audio.play();
-                
+
+                // Configurar eventos del audio
+                audio.addEventListener('canplaythrough', function() {
+                    // Reproducir cuando esté listo
+                    audio.play().catch(function(error) {
+                        console.error('Error al reproducir audio:', error);
+                        alert('Error al reproducir el audio. Por favor, inténtelo de nuevo.');
+                    });
+
+                    // Mostrar controles de audio y cambiar icono
+                    self.container.find('.vibebook-audio-controls').show();
+                    self.container.find('.vibebook-audio-toggle').addClass('playing');
+
+                    // Cambiar icono en el área si existe
+                    if (audioArea) {
+                        self.container.find('.vibebook-area[data-id="' + audioArea.id + '"] .area-icon')
+                            .removeClass('dashicons-controls-play')
+                            .addClass('dashicons-controls-pause');
+                    }
+                });
+
+                audio.addEventListener('ended', function() {
+                    // Restaurar icono cuando termina
+                    if (audioArea) {
+                        self.container.find('.vibebook-area[data-id="' + audioArea.id + '"] .area-icon')
+                            .removeClass('dashicons-controls-pause')
+                            .addClass('dashicons-controls-play');
+                    }
+
+                    self.container.find('.vibebook-audio-toggle').removeClass('playing');
+                    self.currentAudio = null;
+                });
+
+                audio.addEventListener('error', function(e) {
+                    console.error('Error en la reproducción de audio:', e);
+                    alert('Error al reproducir el audio. Por favor, inténtelo de nuevo.');
+                });
+
                 // Guardar referencia
                 self.currentAudio = audio;
-                
-                // Mostrar controles de audio
-                self.container.find('.vibebook-audio-controls').show();
-                self.container.find('.vibebook-audio-toggle').removeClass('playing').addClass('playing');
+            } else {
+                console.error('No se pudo obtener la URL del audio para el ID:', audioId);
+                alert('No se pudo obtener el archivo de audio. Por favor, verifica que el archivo exista.');
             }
         },
-        
-        // Alternar reproducción de audio
+
+         //Alternar reproducción de audio
         toggleAudio: function() {
             var self = this;
-            
+
             if (self.currentAudio) {
                 if (self.currentAudio.paused) {
                     self.currentAudio.play();
                     self.container.find('.vibebook-audio-toggle').addClass('playing');
+
+                    // Buscar el área de audio actual y cambiar su icono
+                    self.container.find('.vibebook-area[data-type="audio"] .area-icon')
+                        .removeClass('dashicons-controls-play')
+                        .addClass('dashicons-controls-pause');
                 } else {
                     self.currentAudio.pause();
                     self.container.find('.vibebook-audio-toggle').removeClass('playing');
+
+                    // Buscar el área de audio actual y cambiar su icono
+                    self.container.find('.vibebook-area[data-type="audio"] .area-icon')
+                        .removeClass('dashicons-controls-pause')
+                        .addClass('dashicons-controls-play');
                 }
             }
         },
-        
+
+
         // Ir a la página anterior
         prevPage: function() {
             if (this.currentPage <= 1) return;
-            
+
             var prevPage;
             if (this.currentViewMode === viewMode.SINGLE_PAGE) {
                 prevPage = this.currentPage - 1;
@@ -720,14 +755,14 @@
                 prevPage = this.currentPage % 2 === 0 ? this.currentPage - 2 : this.currentPage - 1;
                 if (prevPage < 1) prevPage = 1;
             }
-            
+
             this.renderPage(prevPage);
         },
-        
+
         // Ir a la página siguiente
         nextPage: function() {
             if (this.currentPage >= this.totalPages) return;
-            
+
             var nextPage;
             if (this.currentViewMode === viewMode.SINGLE_PAGE) {
                 nextPage = this.currentPage + 1;
@@ -736,14 +771,14 @@
                 nextPage = this.currentPage % 2 === 0 ? this.currentPage + 2 : this.currentPage + 2;
                 if (nextPage > this.totalPages) nextPage = this.totalPages;
             }
-            
+
             this.renderPage(nextPage);
         }
     };
-    
+
     // Inicializar cuando el documento esté listo
     $(document).ready(function() {
         VibeBookFlipFrontend.init();
     });
-    
+
 })(jQuery);
