@@ -7,7 +7,6 @@
     --vb-text: #444;
     --vb-border: #ddd;
     --vb-success: #46b450;
-    --vb-error: #dc3232;
     --vb-warning: #ffb900;
 }
 
@@ -186,8 +185,13 @@
 }
 
 @keyframes vibebook-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Herramientas */
@@ -254,118 +258,512 @@
     margin: 0;
     padding: 0;
     list-style: none;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--vb-border);
+    border-radius: 3px;
 }
 
 .vibebook-areas-list li {
-    padding: 8px 10px;
+    padding: 10px 12px;
     border-bottom: 1px solid var(--vb-border);
     font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.2s;
+}
+
+.vibebook-areas-list li:hover {
+    background-color: #f5f5f5;
 }
 
 .vibebook-areas-list li:last-child {
     border-bottom: none;
 }
 
-/* Áreas interactivas en el editor */
+.vibebook-area-select {
+    flex: 1;
+    text-decoration: none;
+    color: var(--vb-text);
+    display: flex;
+    align-items: center;
+}
+
+.vibebook-area-select:before {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 8px;
+    border-radius: 2px;
+}
+
+.vibebook-area-select[data-type="url"]:before {
+    background-color: var(--vb-primary);
+}
+
+.vibebook-area-select[data-type="youtube"]:before {
+    background-color: #ff0000;
+}
+
+.vibebook-area-select[data-type="internal"]:before {
+    background-color: var(--vb-success);
+}
+
+.vibebook-area-select[data-type="audio"]:before {
+    background-color: var(--vb-warning);
+}
+
+.vibebook-area-delete {
+    color: var(--vb-error);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 16px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    margin-left: 10px;
+}
+
+.vibebook-area-delete:hover {
+    opacity: 1;
+}
+
+/* Indicadores visuales para herramientas activas */
+.vibebook-tool-button.active:after {
+    content: '✓';
+    display: inline-block;
+    margin-left: 5px;
+}
+
+/* Mejoras en la interfaz de opciones de herramienta */
+.vibebook-tool-options {
+    display: none;
+    padding: 15px;
+    background: #f9f9f9;
+    border: 1px solid var(--vb-border);
+    border-radius: 3px;
+    margin-bottom: 15px;
+    border-left: 4px solid var(--vb-primary);
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Mensajes de ayuda */
+.vibebook-help-tip {
+    font-size: 12px;
+    color: #777;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+/* Nuevo estilo para mensajes de ayuda en áreas */
+.vibebook-help-message {
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border-left: 4px solid #0073aa;
+    margin-bottom: 15px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #444;
+}
+
+.vibebook-help-message p {
+    margin: 0;
+}
+
+/* Áreas interactivas en el editor - MEJORADO */
 .vibebook-area {
     position: absolute;
     cursor: move;
     z-index: 50;
+    border-width: 2px;
+    border-style: solid;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+.vibebook-area:hover {
+    opacity: 0.95;
+    transform: scale(1.01);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
 }
 
 .vibebook-area.selected {
+    border-width: 3px;
     border-style: dashed !important;
     z-index: 51;
+    animation: pulso-seleccion 2s infinite;
 }
 
+@keyframes pulso-seleccion {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 115, 170, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 8px rgba(0, 115, 170, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 115, 170, 0);
+    }
+}
+
+/* Estilos específicos por tipo de área */
 .vibebook-area.url-area {
     border-color: var(--vb-primary);
-    background-color: rgba(0, 115, 170, 0.2);
+    background-color: rgba(0, 115, 170, 0.3);
 }
 
 .vibebook-area.youtube-area {
     border-color: #ff0000;
-    background-color: rgba(255, 0, 0, 0.2);
+    background-color: rgba(255, 0, 0, 0.3);
 }
 
 .vibebook-area.internal-area {
     border-color: var(--vb-success);
-    background-color: rgba(70, 180, 80, 0.2);
+    background-color: rgba(70, 180, 80, 0.3);
 }
 
 .vibebook-area.audio-area {
     border-color: var(--vb-warning);
-    background-color: rgba(255, 185, 0, 0.2);
+    background-color: rgba(255, 185, 0, 0.3);
 }
 
-/* Tabla de ediciones */
-.vibebook-editions-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
+/* Área temporal durante la selección */
+#vibebook-temp-area {
+    position: absolute;
+    border: 3px dashed var(--vb-primary);
+    background-color: rgba(0, 115, 170, 0.2);
+    z-index: 100;
+    pointer-events: none;
+    animation: destello-seleccion 1.5s infinite;
 }
 
-.vibebook-editions-table th,
-.vibebook-editions-table td {
-    padding: 10px;
-    text-align: left;
-    border-bottom: 1px solid var(--vb-border);
+@keyframes destello-seleccion {
+    0% {
+        border-color: var(--vb-primary);
+    }
+
+    50% {
+        border-color: rgba(0, 115, 170, 0.5);
+    }
+
+    100% {
+        border-color: var(--vb-primary);
+    }
 }
 
-.vibebook-editions-table th {
-    background: var(--vb-secondary);
-    font-weight: 500;
+/* Esquinas del área para indicar que es seleccionable */
+.vibebook-area::before,
+.vibebook-area::after,
+.vibebook-area .corner-tl,
+.vibebook-area .corner-br {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: #fff;
+    border: 2px solid;
+    opacity: 0;
+    transition: opacity 0.2s;
 }
 
-.vibebook-editions-table tr:hover {
-    background: #f9f9f9;
+.vibebook-area::before {
+    top: -5px;
+    left: -5px;
+    border-color: inherit;
+    border-radius: 50%;
 }
 
-.vibebook-editions-table .actions {
-    text-align: right;
+.vibebook-area::after {
+    bottom: -5px;
+    right: -5px;
+    border-color: inherit;
+    border-radius: 50%;
 }
 
-.vibebook-editions-table .actions a {
-    margin-left: 10px;
-    text-decoration: none;
+.vibebook-area .corner-tl {
+    top: -5px;
+    right: -5px;
+    border-color: inherit;
+    border-radius: 50%;
 }
 
-/* Mensajes */
-.vibebook-message {
+.vibebook-area .corner-br {
+    bottom: -5px;
+    left: -5px;
+    border-color: inherit;
+    border-radius: 50%;
+}
+
+.vibebook-area:hover::before,
+.vibebook-area:hover::after,
+.vibebook-area:hover .corner-tl,
+.vibebook-area:hover .corner-br,
+.vibebook-area.selected::before,
+.vibebook-area.selected::after,
+.vibebook-area.selected .corner-tl,
+.vibebook-area.selected .corner-br {
+    opacity: 1;
+}
+
+/* Indicador de guardado */
+#vibebook-save-indicator {
+    position: fixed;
+    top: 32px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 300px;
+    animation: slideIn 0.3s ease-in-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.vibebook-notice {
     padding: 10px 15px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.vibebook-notice.success {
+    background-color: #e7f5e9;
+    border-left: 4px solid var(--vb-success);
+    color: #1e4620;
+}
+
+.vibebook-notice.error {
+    background-color: #fbeaea;
+    border-left: 4px solid var(--vb-error);
+    color: #7d1f1f;
+}
+
+.vibebook-notice.info {
+    background-color: #e6f2f7;
+    border-left: 4px solid var(--vb-primary);
+    color: #0a4b6e;
+}
+
+.vibebook-notice.warning {
+    background-color: #fef9e6;
+    border-left: 4px solid var(--vb-warning);
+    color: #7d5a00;
+}
+
+/* Tutorial de Bienvenida */
+.vibebook-tutorial-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.vibebook-tutorial-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.vibebook-tutorial-modal {
+    background-color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+.vibebook-tutorial-overlay.active .vibebook-tutorial-modal {
+    transform: translateY(0);
+}
+
+.vibebook-tutorial-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--vb-border);
+    background-color: var(--vb-primary);
+    color: #fff;
+    border-radius: 5px 5px 0 0;
+}
+
+.vibebook-tutorial-header h2 {
+    margin: 0;
+    color: #fff;
+}
+
+.vibebook-tutorial-close {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.vibebook-tutorial-close:hover {
+    opacity: 1;
+}
+
+.vibebook-tutorial-content {
+    padding: 20px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.vibebook-tutorial-step {
+    display: none;
+}
+
+.vibebook-tutorial-step.active {
+    display: block;
+    animation: fadeStep 0.5s ease;
+}
+
+@keyframes fadeStep {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.vibebook-tutorial-step h3 {
+    margin-top: 0;
+    color: var(--vb-primary);
+    font-size: 18px;
+}
+
+.vibebook-tutorial-image {
+    margin: 15px 0;
+    text-align: center;
+    border: 1px solid var(--vb-border);
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.vibebook-tutorial-image img {
+    max-width: 100%;
+    height: auto;
+}
+
+.vibebook-tutorial-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-top: 1px solid var(--vb-border);
+}
+
+.vibebook-tutorial-prev,
+.vibebook-tutorial-next {
+    background: var(--vb-secondary);
+    border: 1px solid var(--vb-border);
+    padding: 8px 15px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.vibebook-tutorial-prev:hover,
+.vibebook-tutorial-next:hover {
+    background: #e5e5e5;
+}
+
+.vibebook-tutorial-prev:disabled,
+.vibebook-tutorial-next:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.vibebook-tutorial-dots {
+    display: flex;
+    gap: 8px;
+}
+
+.vibebook-tutorial-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: var(--vb-border);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.vibebook-tutorial-dot.active {
+    background-color: var(--vb-primary);
+    transform: scale(1.2);
+}
+
+.vibebook-tutorial-footer {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--vb-border);
+    background-color: #f9f9f9;
+    border-radius: 0 0 5px 5px;
+}
+
+/* Mensaje de bienvenida en la pestaña de subir */
+.vibebook-welcome-message {
+    background-color: #f0f7fb;
+    border-left: 4px solid var(--vb-primary);
+    padding: 15px;
     margin-bottom: 20px;
     border-radius: 3px;
 }
 
-.vibebook-message.success {
-    background: #ecf7ed;
-    border: 1px solid var(--vb-success);
-    color: #2a6f31;
+.vibebook-welcome-message h3 {
+    margin-top: 0;
+    color: var(--vb-primary);
 }
 
-.vibebook-message.error {
-    background: #f9e2e2;
-    border: 1px solid var(--vb-error);
-    color: #a72525;
+/* Tarjeta de ayuda */
+.vibebook-help-card {
+    margin-top: 30px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border: 1px solid var(--vb-border);
+    border-radius: 5px;
 }
 
-/* Responsive */
-@media screen and (max-width: 782px) {
-    .vibebook-editor {
-        flex-direction: column;
-    }
-    
-    .vibebook-editor-tools {
-        width: 100%;
-    }
-    
-    .vibebook-tabs {
-        flex-wrap: wrap;
-    }
-    
-    .vibebook-tab-link {
-        flex: 1;
-        text-align: center;
-        padding: 10px;
-    }
+.vibebook-help-card h4 {
+    margin-top: 0;
+    color: var(--vb-text);
 }

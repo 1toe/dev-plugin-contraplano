@@ -1,11 +1,11 @@
 <?php
 /**
- * Plugin Name: -1) FLIYING BOOK 
- * Plugin URI: https://vibebook.com/
+ * Plugin Name: - 📚 Flipbook ContraPlano
+ * Plugin URI: https://contraplano.cl/
  * Description: Plugin para visualizar PDFs como flipbooks interactivos con áreas interactivas.
- * Version: 1.0.6
- * Author: Vibebook
- * Author URI: https://vibebook.com/
+ * Version: 1.0.8
+ * Author: Matías F, Walter C.
+ * Author URI: https://contraplano.cl/
  * Text Domain: vibebook-flip
  * Domain Path: /languages
  */
@@ -25,6 +25,81 @@ define('VIBEBOOK_FLIP_PLUGIN_URL', plugin_dir_url(__FILE__));
  */
 class VibeBookFlip {
     
+    /**
+     * AJAX: Actualizar todas las áreas de un flipbook
+     * Esta función reemplaza múltiples endpoints por uno solo más eficiente
+     */
+    public function ajax_update_areas() {
+        // Verificar nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'vibebook_flip_nonce')) {
+            wp_send_json_error('Nonce inválido');
+        }
+        
+        // Verificar permisos
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permisos insuficientes');
+        }
+        
+        // Obtener datos
+        $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+        $areas_json = isset($_POST['areas']) ? sanitize_text_field($_POST['areas']) : '';
+        
+        // Verificar datos
+        if (!$post_id || empty($areas_json)) {
+            wp_send_json_error('Datos incompletos para guardar áreas');
+        }
+        
+        // Verificar post
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== 'vibebook_flipbook') {
+            wp_send_json_error('Flipbook no encontrado');
+        }
+        
+        // Decodificar JSON
+        $areas = json_decode(stripslashes($areas_json), true);
+        if (!$areas && json_last_error() !== JSON_ERROR_NONE) {
+            wp_send_json_error('Error al decodificar áreas: ' . json_last_error_msg());
+        }
+
+        // Procesar cada área para sanitizar datos
+        foreach ($areas as &$area) {
+            if (isset($area['target_url'])) {
+                $area['target_url'] = esc_url_raw($area['target_url']);
+            }
+            
+            if (isset($area['color'])) {
+                $area['color'] = sanitize_text_field($area['color']);
+            }
+            
+            // Asegurarse que las coordenadas se manejan como números
+            if (isset($area['coords']) && is_array($area['coords'])) {
+                $area['coords'] = array_map('floatval', $area['coords']);
+            }
+            
+            if (isset($area['coords_percent']) && is_array($area['coords_percent'])) {
+                $area['coords_percent'] = array_map('floatval', $area['coords_percent']);
+            }
+            
+            // Para áreas de audio, incluir la URL del audio
+            if ($area['type'] === 'audio' && isset($area['audio_id'])) {
+                $audio_url = wp_get_attachment_url($area['audio_id']);
+                if ($audio_url) {
+                    $area['audio_url'] = $audio_url;
+                }
+            }
+        }
+        
+        // Guardar áreas actualizadas
+        update_post_meta($post_id, '_vibebook_areas', $areas);
+        
+        // Devolver respuesta exitosa
+        wp_send_json_success(array(
+            'message' => 'Áreas guardadas correctamente',
+            'timestamp' => current_time('timestamp'),
+            'areas_count' => count($areas)
+        ));
+    }
+
     /**
      * Constructor
      */
@@ -53,10 +128,7 @@ class VibeBookFlip {
         // Registrar AJAX handlers para usuarios logueados
         add_action('wp_ajax_vibebook_save_flipbook', array($this, 'ajax_save_flipbook'));
         add_action('wp_ajax_vibebook_get_flipbook', array($this, 'ajax_get_flipbook'));
-        add_action('wp_ajax_vibebook_save_area', array($this, 'ajax_save_area'));
-        add_action('wp_ajax_vibebook_update_area', array($this, 'ajax_update_area'));
-        add_action('wp_ajax_vibebook_delete_area', array($this, 'ajax_delete_area'));
-        add_action('wp_ajax_vibebook_update_area_position', array($this, 'ajax_update_area_position'));
+        add_action('wp_ajax_vibebook_update_areas', array($this, 'ajax_update_areas')); // Nuevo endpoint consolidado
         add_action('wp_ajax_vibebook_get_audio_url', array($this, 'ajax_get_audio_url'));
         
         // Registrar AJAX handlers para usuarios no logueados (frontend)
@@ -180,6 +252,21 @@ class VibeBookFlip {
         
         // Cargar traducciones
         load_plugin_textdomain('vibebook-flip', false, dirname(plugin_basename(__FILE__)) . '/languages');
+        
+        // Aumentar límite de memoria si es necesario para manejar PDFs y áreas grandes
+        if (defined('WP_MAX_MEMORY_LIMIT')) {
+            $current_limit = ini_get('memory_limit');
+            $current_limit_int = intval($current_limit);
+            if ($current_limit_int < 256 && strpos($current_limit, 'M') !== false) {
+                ini_set('memory_limit', '256M');
+            }
+        }
+        
+        // Aumentar límites de POST para permitir muchas áreas
+        if (function_exists('ini_set')) {
+            ini_set('post_max_size', '32M');
+            ini_set('max_input_vars', '3000');
+        }
     }
     
     /**
@@ -571,42 +658,80 @@ class VibeBookFlip {
      * AJAX: Obtener flipbook
      */
     public function ajax_get_flipbook() {
-        // Verificar nonce
-        if (!isset($_GET['nonce']) || !wp_verify_nonce($_GET['nonce'], 'vibebook_flip_nonce')) {
-            wp_send_json_error('Nonce inválido');
+        // Configurar encabezado JSON para la respuesta
+        header('Content-Type: application/json');
+        
+        try {
+            // Verificar nonce
+            if (!isset($_GET['nonce']) || !wp_verify_nonce($_GET['nonce'], 'vibebook_flip_nonce')) {
+                throw new Exception('Nonce inválido');
+            }
+            
+            // Verificar permisos
+            if (!current_user_can('manage_options')) {
+                throw new Exception('Permisos insuficientes');
+            }
+            
+            // Obtener datos
+            $post_id = isset($_GET['post_id']) ? intval($_GET['post_id']) : 0;
+            
+            // Verificar post
+            $post = get_post($post_id);
+            if (!$post || $post->post_type !== 'vibebook_flipbook') {
+                throw new Exception('Flipbook no encontrado');
+            }
+            
+            // Obtener metadatos
+            $pdf_id = get_post_meta($post_id, '_vibebook_pdf_id', true);
+            $pdf_url = wp_get_attachment_url($pdf_id);
+            $areas = get_post_meta($post_id, '_vibebook_areas', true);
+            
+            // Asegurar que areas sea un array para evitar errores de JavaScript
+            if (empty($areas) || !is_array($areas)) {
+                $areas = array();
+            }
+            
+            // Procesar áreas para asegurar que los datos sean correctos
+            foreach ($areas as $key => $area) {
+                // Verificar que el área tiene las propiedades mínimas necesarias
+                if (!isset($area['id']) || !isset($area['page']) || !isset($area['type'])) {
+                    unset($areas[$key]);
+                    continue;
+                }
+                
+                // Verificar coordenadas
+                if (!isset($area['coords_percent']) || !is_array($area['coords_percent']) || count($area['coords_percent']) !== 4) {
+                    // Si hay coords pero no coords_percent, intentar mantenerlo para que el frontend calcule
+                    if (!isset($area['coords']) || !is_array($area['coords']) || count($area['coords']) !== 4) {
+                        // Si no tenemos ninguna coordenada válida, mejor eliminar esta área
+                        unset($areas[$key]);
+                        continue;
+                    }
+                }
+            }
+            
+            // Reindexar el array
+            $areas = array_values($areas);
+            
+            // Responder con éxito
+            wp_send_json_success(array(
+                'post_id' => $post_id,
+                'title' => $post->post_title,
+                'pdf_id' => $pdf_id,
+                'pdf_url' => $pdf_url,
+                'areas' => $areas,
+                'areas_count' => count($areas)
+            ));
+            
+        } catch (Exception $e) {
+            // Registrar error para depuración
+            error_log('VibeBook Error: ' . $e->getMessage());
+            
+            // Responder con error
+            wp_send_json_error(array(
+                'message' => $e->getMessage()
+            ));
         }
-        
-        // Verificar permisos
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error('Permisos insuficientes');
-        }
-        
-        // Obtener datos
-        $post_id = isset($_GET['post_id']) ? intval($_GET['post_id']) : 0;
-        
-        // Verificar post
-        $post = get_post($post_id);
-        if (!$post || $post->post_type !== 'vibebook_flipbook') {
-            wp_send_json_error('Flipbook no encontrado');
-        }
-        
-        // Obtener metadatos
-        $pdf_id = get_post_meta($post_id, '_vibebook_pdf_id', true);
-        $pdf_url = wp_get_attachment_url($pdf_id);
-        $areas = get_post_meta($post_id, '_vibebook_areas', true);
-        
-        if (!$areas) {
-            $areas = array();
-        }
-        
-        // Responder con éxito
-        wp_send_json_success(array(
-            'post_id' => $post_id,
-            'title' => $post->post_title,
-            'pdf_id' => $pdf_id,
-            'pdf_url' => $pdf_url,
-            'areas' => $areas,
-        ));
     }
     
     /**
